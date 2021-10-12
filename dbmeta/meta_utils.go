@@ -178,6 +178,46 @@ ORDER BY table_name, ordinal_position;
 	return colInfo, nil
 }
 
+// LoadTableInfoFromD365InformationSchema fetch info from information_schema for dynamics 365 sql database
+func LoadTableInfoFromD365InformationSchema(db *sql.DB, objectId string, tableName string) (primaryKey map[string]*InformationSchema, err error) {
+	colInfo := make(map[string]*InformationSchema)
+
+	identitySQL := fmt.Sprintf(`
+		SELECT a.column_id, a.name AS COLUMN_NAME, b.name AS DATA_TYPE,a.max_length AS character_maximum_length,
+			REPLACE(REPLACE(ISNULL(c.definition,''),'(',''),')','') AS column_default,a.is_nullable AS is_nullable
+          FROM sys.columns a 
+		  LEFT JOIN sys.types b ON a.user_type_id=b.user_type_id
+          LEFT JOIN sys.sql_modules c ON a.object_id=c.object_id
+		  LEFT OUTER JOIN (SELECT i.object_id, ic.column_id, i.is_primary_key
+			FROM sys.indexes i
+		  LEFT JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+			WHERE i.is_primary_key = 1
+		) AS p ON p.object_id = a.object_id AND p.column_id = a.column_id
+          WHERE a.object_id=%s
+        ORDER BY a.column_id
+`, objectId)
+
+	res, err := db.Query(identitySQL)
+	if err != nil {
+		return nil, fmt.Errorf("unable to load ddl from information_schema: %v", err)
+	}
+	defer res.Close()
+	for res.Next() {
+		ci := &InformationSchema{}
+		ci.TableName = tableName
+		err = res.Scan(&ci.OrdinalPosition, &ci.ColumnName, &ci.DataType, &ci.CharacterMaximumLength,
+			&ci.ColumnDefault, &ci.IsNullable)
+
+		if err != nil {
+			return nil, fmt.Errorf("unable to load identity info from information_schema Scan: %v", err)
+		}
+
+		colInfo[ci.ColumnName] = ci
+	}
+
+	return colInfo, nil
+}
+
 // GetFieldLenFromInformationSchema fetch field length from database
 func GetFieldLenFromInformationSchema(db *sql.DB, tableSchema, tableName, columnName string) (int64, error) {
 	sql := fmt.Sprintf(`

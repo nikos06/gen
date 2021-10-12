@@ -1,0 +1,26 @@
+{
+  "colInfos": [
+  {{- $colNames := .colNames }}
+  {{- $tableLength := len .tableNames }}
+  {{- $tableLength = decVar $tableLength }}
+  {{- range $i, $tableName := .tableNames }}
+    {
+      "table" :  "{{$tableName}}",
+      "colInfo": [
+      {{- $columns := (index $colNames $tableName) }}
+      {{- $colLength := len $columns }}
+      {{- $colLength = decVar $colLength }}
+      {{- range $j, $colName := $columns }}
+        {
+          "name":       "{{$colName}}",
+          "isIdentity": false,
+          "isNullable": true,
+          "primaryKey": false,
+          "maxLength":  -1
+        }{{ if ne $j $colLength }},{{- end}}
+      {{end -}}
+    ]
+    }{{ if ne $i $tableLength }},{{- end}}
+    {{end -}}
+  ]
+}

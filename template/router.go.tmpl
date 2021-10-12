@@ -42,7 +42,7 @@ type PagedResults struct {
 	Page         int64       {{ .Config.JSONTag "page" }}
 	PageSize     int64       {{ .Config.JSONTag "page_size" }}
 	Data         interface{} {{ .Config.JSONTag "data" }}
-    TotalRecords int         {{ .Config.JSONTag "total_records" }}
+    TotalRecords int64       {{ .Config.JSONTag "total_records" }}
 }
 
 // HTTPError example
@@ -274,7 +274,8 @@ func parseUUID(ps httprouter.Params, key string) (string, error) {
 
 func parseBytes(ps httprouter.Params, key string) (string, error) {
 	idStr := ps.ByName(key)
-	return hex.DecodeString(idStr)
+    hex, err := hex.DecodeString(idStr)
+    return string(hex), err
 }
 
 
@@ -344,7 +345,7 @@ func init() {
 		Name: "{{$tableName}}",
 		CreateURL: "/{{$tableInfo.StructName | toLower}}",
 		RetrieveOneURL: "/{{$tableInfo.StructName | toLower}}",
-		RetrieveManyURL: "/{{$tableInfo.StructName | toLower}}",
+		RetrieveManyURL: "/{{$tableInfo.StructName | toLower | pluralize }}",
 		UpdateURL: "/{{$tableInfo.StructName | toLower}}",
 		DeleteURL: "/{{$tableInfo.StructName | toLower}}",
 		FetchDDLURL: "/ddl/{{$tableName}}",
@@ -355,5 +356,3 @@ func init() {
 
 	{{end}}
 }
-
-

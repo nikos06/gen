@@ -8,8 +8,19 @@ import (
 	"github.com/smallnest/gen/schema"
 )
 
-// LoadMsSQLMeta fetch db meta data for MS SQL database
-func LoadMsSQLMeta(db *sql.DB, sqlType, sqlDatabase, tableName string) (DbTableMeta, error) {
+type colInfo struct {
+	Table   string           `json:"table"`
+	ColInfo []D365ColumnInfo `json:"colInfo"`
+}
+
+type colInfos struct {
+	ColInfos []colInfo `json:"colInfos"`
+}
+
+var ColInfos colInfos
+
+// LoadD365Meta fetch db meta data for MS SQL database
+func LoadD365Meta(db *sql.DB, sqlType, sqlDatabase, tableName string) (DbTableMeta, error) {
 	m := &dbTableMeta{
 		sqlType:     sqlType,
 		sqlDatabase: sqlDatabase,
@@ -21,18 +32,24 @@ func LoadMsSQLMeta(db *sql.DB, sqlType, sqlDatabase, tableName string) (DbTableM
 		return nil, err
 	}
 
+	objectId, err := schema.ObjectId(db, m.tableName)
+	if err != nil {
+		return nil, err
+	}
+
 	m.columns = make([]*columnMeta, len(cols))
-	colInfo, err := msSQLloadFromSysColumns(db, tableName)
+
+	colInfo, err := d365loadFromSysColumns(db, objectId, m.tableName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load ddl from ms sql: %v", err)
 	}
 
-	err = msSQLLoadPrimaryKey(db, tableName, colInfo)
+	err = d365LoadPrimaryKey(db, objectId, colInfo)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load ddl from ms sql: %v", err)
 	}
 
-	infoSchema, err := LoadTableInfoFromMSSqlInformationSchema(db, tableName)
+	infoSchema, err := LoadTableInfoFromD365InformationSchema(db, objectId, m.tableName)
 	if err != nil {
 		fmt.Printf("error calling LoadTableInfoFromMSSqlInformationSchema table: %s error: %v\n", tableName, err)
 	}
@@ -47,23 +64,23 @@ func LoadMsSQLMeta(db *sql.DB, sqlType, sqlDatabase, tableName string) (DbTableM
 		isPrimaryKey := i == 0
 		var columnLen int64 = -1
 
-		colInfo, ok := colInfo[v.Name()]
-		if ok {
-			isPrimaryKey = colInfo.primaryKey
-			nullable = colInfo.isNullable
-			isAutoIncrement = colInfo.isIdentity
-			dbType := strings.ToLower(v.DatabaseTypeName())
-
-			if strings.Contains(dbType, "char") || strings.Contains(dbType, "text") {
-				columnLen = colInfo.maxLength
-			}
-		} else {
-			fmt.Printf("name: %s DatabaseTypeName: %s NOT FOUND in colInfo\n", v.Name(), v.DatabaseTypeName())
-		}
-
 		defaultVal := ""
 		columnType := v.DatabaseTypeName()
 		colDDL := v.DatabaseTypeName()
+
+		colInfo, ok := colInfo[v.Name()]
+		if ok {
+			isPrimaryKey = colInfo.PrimaryKey
+			nullable = colInfo.IsNullable
+			isAutoIncrement = colInfo.IsIdentity
+			dbType := strings.ToLower(v.DatabaseTypeName())
+
+			if strings.Contains(dbType, "char") || strings.Contains(dbType, "text") {
+				columnLen = colInfo.MaxLength
+			}
+		} else {
+			MissingColumns[tableName] = append(MissingColumns[tableName], v.Name())
+		}
 
 		if infoSchema != nil {
 			infoSchemaColInfo, ok := infoSchema[v.Name()]
@@ -96,18 +113,17 @@ func LoadMsSQLMeta(db *sql.DB, sqlType, sqlDatabase, tableName string) (DbTableM
 	return m, nil
 }
 
-func msSQLLoadPrimaryKey(db *sql.DB, tableName string, colInfo map[string]*msSQLColumnInfo) error {
+func d365LoadPrimaryKey(db *sql.DB, tableName string, colInfo map[string]*D365ColumnInfo) error {
 
 	primaryKeySQL := fmt.Sprintf(`
-SELECT Col.Column_Name from 
-    INFORMATION_SCHEMA.TABLE_CONSTRAINTS Tab, 
-    INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE Col 
-WHERE 
-    Col.Constraint_Name = Tab.Constraint_Name
-    AND Col.Table_Name = Tab.Table_Name
-    AND Constraint_Type = 'PRIMARY KEY'
-    AND Col.Table_Name = '%s'
-`, tableName)
+		SELECT a.name
+          FROM sys.columns a 
+		  LEFT OUTER JOIN (SELECT i.object_id, ic.column_id, i.is_primary_key
+			FROM sys.indexes i
+		  	LEFT JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+			WHERE i.is_primary_key = 1) AS p on p.object_id = a.object_id AND p.column_id = a.column_id
+          WHERE a.object_id=%s AND p.is_primary_key=1
+		`, tableName)
 	res, err := db.Query(primaryKeySQL)
 	if err != nil {
 		return fmt.Errorf("unable to load ddl from ms sql: %v", err)
@@ -124,20 +140,20 @@ WHERE
 		//fmt.Printf("## PRIMARY KEY COLUMN_NAME: %s\n", columnName)
 		colInfo, ok := colInfo[columnName]
 		if ok {
-			colInfo.primaryKey = true
+			colInfo.PrimaryKey = true
 			//fmt.Printf("name: %s primary_key: %t\n", colInfo.name, colInfo.primary_key)
 		}
 	}
 	return nil
 }
 
-func msSQLloadFromSysColumns(db *sql.DB, tableName string) (colInfo map[string]*msSQLColumnInfo, err error) {
-	colInfo = make(map[string]*msSQLColumnInfo)
+func d365loadFromSysColumns(db *sql.DB, objectId string, tableName string) (colInfo map[string]*D365ColumnInfo, err error) {
+	colInfo = make(map[string]*D365ColumnInfo)
 
 	identitySQL := fmt.Sprintf(`
 SELECT name, is_identity, is_nullable, max_length 
 FROM sys.columns 
-WHERE  object_id = object_id('dbo.%s')`, tableName)
+WHERE  object_id = %s`, objectId)
 
 	res, err := db.Query(identitySQL)
 	if err != nil {
@@ -154,22 +170,32 @@ WHERE  object_id = object_id('dbo.%s')`, tableName)
 			return nil, fmt.Errorf("unable to load identity info from ms sql Scan: %v", err)
 		}
 
-		colInfo[name] = &msSQLColumnInfo{
-			name:       name,
-			isIdentity: isIdentity,
-			isNullable: isNullable,
-			maxLength:  maxLength,
+		colInfo[name] = &D365ColumnInfo{
+			Name:       name,
+			IsIdentity: isIdentity,
+			IsNullable: isNullable,
+			MaxLength:  maxLength,
 		}
 	}
+
+	// Load missing columns info
+	for _, c := range ColInfos.ColInfos {
+		if c.Table == tableName {
+			for _, ci := range c.ColInfo {
+				colInfo[ci.Name] = &ci
+			}
+		}
+	}
+
 	return colInfo, err
 }
 
-type msSQLColumnInfo struct {
-	name       string
-	isIdentity bool
-	isNullable bool
-	primaryKey bool
-	maxLength  int64
+type D365ColumnInfo struct {
+	Name       string `json:"name"`
+	IsIdentity bool   `json:"isIdentity"`
+	IsNullable bool   `json:"isNullable"`
+	PrimaryKey bool   `json:"primaryKey"`
+	MaxLength  int64  `json:"maxLength"`
 }
 
 /*

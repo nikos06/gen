@@ -8,7 +8,7 @@ import (
 
 	"{{.modelFQPN}}"
 
-    "github.com/guregu/null"
+    "gopkg.in/guregu/null.v4"
 	"github.com/satori/go.uuid"
 )
 
@@ -47,5 +47,3 @@ selectMultiSql         : {{.selectMultiSql}}
 {{template "dao_sqlx_add.go.tmpl" .}}
 {{template "dao_sqlx_update.go.tmpl" .}}
 {{template "dao_sqlx_delete.go.tmpl" .}}
-
-

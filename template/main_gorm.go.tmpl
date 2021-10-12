@@ -8,21 +8,23 @@ import (
 	"os/signal"
 	"syscall"
 
-    _ "github.com/jinzhu/gorm/dialects/mysql"
-    _ "github.com/jinzhu/gorm/dialects/sqlite"
-    _ "github.com/jinzhu/gorm/dialects/postgres"
-    _ "github.com/jinzhu/gorm/dialects/mssql"
+    _ "gorm.io/driver/mysql"
+    _ "gorm.io/driver/sqlite"
+    _ "gorm.io/driver/postgres"
+    _ "gorm.io/driver/sqlserver"
 
+	"gorm.io/gorm"
+    "gorm.io/driver/{{.sqlType}}"
 	"github.com/gin-gonic/gin"
-	"github.com/jinzhu/gorm"
 	"github.com/swaggo/files"       // swagger embed files
 	"github.com/swaggo/gin-swagger" // gin-swagger middleware
 	"github.com/droundy/goopt"
 
+    _ "{{.module}}/docs"
 	"{{.module}}/{{.apiPackageName}}"
     "{{.module}}/{{.daoPackageName}}"
-    _ "{{.module}}/docs"
-    "{{.module}}/{{.modelPackageName}}"
+    //"{{.module}}/{{.modelPackageName}}"
+    "github.com/ACPMFrance/crm-proxy/model"
 )
 
 var (
@@ -94,12 +96,12 @@ func main() {
 `, BuildDate, BuildNumber, LatestCommit, RuntimeVer, BuiltOnOs)
 	goopt.Parse(nil)
 
-	db, err := gorm.Open("{{.sqlType}}", "{{.sqlConnStr}}")
+	db, err := gorm.Open({{.sqlType}}.Open("{{.sqlConnStr}}"), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Got error when connect database, the error is '%v'", err)
 	}
 
-	db.LogMode(true)
+	//db.LogMode(true)
 	{{.daoPackageName}}.DB = db
 
     {{ $modelPackage := .modelPackageName }}

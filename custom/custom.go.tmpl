@@ -14,7 +14,7 @@ import (
 // params - pagesize - number of records in a page  (defaults to 20)
 // params - order    - db sort order column
 // error - ErrNotFound, db Find error
-func GetAll{{.StructName}}(ctx context.Context, page, pagesize int64, order string) ({{.StructName | toLower}} []*{{.modelPackageName}}.{{.StructName}}, totalRows int, err error) {
+func GetAll{{.StructName}}(ctx context.Context, page, pagesize int, order string) ({{.StructName | toLower}} []*{{.modelPackageName}}.{{.StructName}}, totalRows int, err error) {
 
 	{{.StructName | toLower}} = []*{{.modelPackageName}}.{{.StructName}}{}
 

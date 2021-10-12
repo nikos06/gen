@@ -17,13 +17,14 @@ import (
 	"github.com/droundy/goopt"
 	"github.com/gobuffalo/packd"
 	"github.com/gobuffalo/packr/v2"
-	"github.com/jimsmart/schema"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	_ "github.com/lib/pq"
 	"github.com/logrusorgru/aurora"
 	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/nikos06/odbc"
 
 	"github.com/smallnest/gen/dbmeta"
+	"github.com/smallnest/gen/schema"
 )
 
 var (
@@ -87,6 +88,10 @@ var (
 	swaggerContactName  = goopt.String([]string{"--swagger_contact_name"}, "Me", "swagger contact name")
 	swaggerContactURL   = goopt.String([]string{"--swagger_contact_url"}, "http://me.com/terms.html", "swagger contact url")
 	swaggerContactEmail = goopt.String([]string{"--swagger_contact_email"}, "me@me.com", "swagger contact email")
+
+	createMissingColumns = goopt.Flag([]string{"--create-missing-columns"}, []string{}, "create json mapping of missing columns", "")
+
+	apiPrefix = goopt.String([]string{"--api-prefix"}, "", "api prefix, e.g. /api/1.0/")
 
 	verbose = goopt.Flag([]string{"-v", "--verbose"}, []string{}, "Enable verbose output", "")
 
@@ -266,6 +271,14 @@ func main() {
 		}
 	}
 
+	if !*createMissingColumns {
+		if err = loadMissingColumns(); err != nil {
+			fmt.Print(au.Red(fmt.Sprintf("Error loading missing columns infos: %v\n", err)))
+			os.Exit(1)
+			return
+		}
+	}
+
 	tableInfos = dbmeta.LoadTableInfo(db, dbTables, excludeDbTables, conf)
 
 	if len(tableInfos) == 0 {
@@ -369,7 +382,8 @@ func initialize(conf *dbmeta.Config) {
 
 	conf.Module = *module
 	conf.ModelPackageName = *modelPackageName
-	conf.ModelFQPN = *module + "/" + *modelPackageName
+	//conf.ModelFQPN = *module + "/" + *modelPackageName
+	conf.ModelFQPN = "github.com/ACPMFrance/crm-proxy/model"
 
 	conf.DaoPackageName = *daoPackageName
 	conf.DaoFQPN = *module + "/" + *daoPackageName
@@ -386,8 +400,8 @@ func initialize(conf *dbmeta.Config) {
 
 	conf.Swagger.Version = *swaggerVersion
 	conf.Swagger.BasePath = *swaggerBasePath
-	conf.Swagger.Title = fmt.Sprintf("Sample CRUD api for %s db", *sqlDatabase)
-	conf.Swagger.Description = fmt.Sprintf("Sample CRUD api for %s db", *sqlDatabase)
+	conf.Swagger.Title = fmt.Sprintf("CRUD api for %s db", *sqlDatabase)
+	conf.Swagger.Description = fmt.Sprintf("CRUD api for %s db", *sqlDatabase)
 	conf.Swagger.TOS = *swaggerTos
 	conf.Swagger.ContactName = *swaggerContactName
 	conf.Swagger.ContactURL = *swaggerContactURL
@@ -401,6 +415,8 @@ func initialize(conf *dbmeta.Config) {
 	conf.JSONNameFormat = strings.ToLower(conf.JSONNameFormat)
 	conf.XMLNameFormat = strings.ToLower(conf.XMLNameFormat)
 	conf.ProtobufNameFormat = strings.ToLower(conf.ProtobufNameFormat)
+
+	conf.ApiPrefix = *apiPrefix
 }
 
 func loadDefaultDBMappings(conf *dbmeta.Config) error {
@@ -464,6 +480,7 @@ func execTemplate(conf *dbmeta.Config, genTemplate *dbmeta.GenTemplate, data map
 	data["CommandLine"] = conf.CmdLine
 	data["outDir"] = *outDir
 	data["Config"] = conf
+	data["apiPrefix"] = conf.ApiPrefix
 
 	tables := make([]string, 0, len(tableInfos))
 	for k := range tableInfos {
@@ -573,6 +590,12 @@ func generate(conf *dbmeta.Config) error {
 
 	*jsonNameFormat = strings.ToLower(*jsonNameFormat)
 	*xmlNameFormat = strings.ToLower(*xmlNameFormat)
+
+	if *createMissingColumns {
+		if err = generateMissingColumns(conf); err != nil {
+			return err
+		}
+	}
 
 	// generate go files for each table
 	for tableName, tableInfo := range tableInfos {
@@ -1049,6 +1072,9 @@ func regenCmdLine() []string {
 	cmdLine = append(cmdLine, fmt.Sprintf(" --file_naming='%s'", *fileNamingTemplate))
 	cmdLine = append(cmdLine, fmt.Sprintf(" --model_naming='%s'", *modelNamingTemplate))
 
+	if *createMissingColumns {
+		cmdLine = append(cmdLine, fmt.Sprintf(" --create-missing-columns"))
+	}
 	if *verbose {
 		cmdLine = append(cmdLine, fmt.Sprintf(" --verbose"))
 	}
@@ -1131,6 +1157,12 @@ func CreateGoSrcFileName(tableName string) string {
 		name = name + "_tst"
 	}
 	return name + ".go"
+}
+
+// CreateJSONSrcFileName return a .json file name
+func CreateJSONSrcFileName(tableName string) string {
+	name := dbmeta.Replace(*fileNamingTemplate, tableName)
+	return name + ".json"
 }
 
 // LoadTemplate return template from template dir, falling back to the embedded templates

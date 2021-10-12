@@ -5,19 +5,18 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"path"
-	"time"
-
-	"github.com/smallnest/gen/utils"
-
 	"go/format"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
 	"text/template"
+	"time"
+
+	"github.com/smallnest/gen/utils"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/jinzhu/inflection"
@@ -123,6 +122,9 @@ func (c *Config) GetTemplate(genTemplate *GenTemplate) (*template.Template, erro
 		"pwd":                        Pwd,
 		"config":                     c.DisplayConfig,
 		"insertFragment":             c.insertFragment,
+		"decVar": func(i int) int {
+			return i - 1
+		},
 	}
 
 	baseName := filepath.Base(genTemplate.Name)
@@ -226,8 +228,12 @@ func camelToLowerCamel(s string) string {
 }
 
 func camelToUpperCamel(s string) string {
-	ss := strings.Split(s, "")
-	ss[0] = strings.ToUpper(ss[0])
+	ss := strings.Split(s, "_")
+	for i, _  := range ss {
+		sss := strings.Split(ss[i], "")
+		sss[0] = strings.ToUpper(sss[0])
+		ss[i] =  strings.Join(sss, "")
+	}
 	return strings.Join(ss, "")
 }
 
@@ -535,6 +541,34 @@ func (c *Config) CreateContextForTableFile(tableInfo *ModelInfo) map[string]inte
 	return modelInfo
 }
 
+func (c *Config) InstantiateTemplate(genTemplate *GenTemplate, data map[string]interface{}, outputFile string) error {
+	rt, err := c.GetTemplate(genTemplate)
+	if err != nil {
+		return fmt.Errorf("error in loading %s template, error: %v", genTemplate.Name, err)
+	}
+	var buf bytes.Buffer
+	err = rt.Execute(&buf, data)
+	if err != nil {
+		return fmt.Errorf("error in rendering %s: %s", genTemplate.Name, err.Error())
+	}
+
+	fileContents, err := c.format(genTemplate, buf.Bytes(), outputFile)
+	if err != nil {
+		return fmt.Errorf("error writing %s - error: %v", outputFile, err)
+	}
+
+	err = ioutil.WriteFile(outputFile, fileContents, 0777)
+	if err != nil {
+		return fmt.Errorf("error writing %s - error: %v", outputFile, err)
+	}
+
+	if c.Verbose {
+		fmt.Printf("writing %s\n", outputFile)
+	}
+
+	return nil
+}
+
 // WriteTemplate write a template out
 func (c *Config) WriteTemplate(genTemplate *GenTemplate, data map[string]interface{}, outputFile string) error {
 	//fmt.Printf("WriteTemplate %s\n", outputFile)
@@ -577,30 +611,9 @@ func (c *Config) WriteTemplate(genTemplate *GenTemplate, data map[string]interfa
 	data["outDir"] = c.OutDir
 	data["Config"] = c
 
-	rt, err := c.GetTemplate(genTemplate)
-	if err != nil {
-		return fmt.Errorf("error in loading %s template, error: %v", genTemplate.Name, err)
-	}
-	var buf bytes.Buffer
-	err = rt.Execute(&buf, data)
-	if err != nil {
-		return fmt.Errorf("error in rendering %s: %s", genTemplate.Name, err.Error())
-	}
+	data["apiPrefix"] = c.ApiPrefix
 
-	fileContents, err := c.format(genTemplate, buf.Bytes(), outputFile)
-	if err != nil {
-		return fmt.Errorf("error writing %s - error: %v", outputFile, err)
-	}
-
-	err = ioutil.WriteFile(outputFile, fileContents, 0777)
-	if err != nil {
-		return fmt.Errorf("error writing %s - error: %v", outputFile, err)
-	}
-
-	if c.Verbose {
-		fmt.Printf("writing %s\n", outputFile)
-	}
-	return nil
+	return c.InstantiateTemplate(genTemplate, data, outputFile)
 }
 
 func (c *Config) format(genTemplate *GenTemplate, content []byte, outputFile string) ([]byte, error) {
@@ -914,6 +927,7 @@ type Config struct {
 	TableInfos            map[string]*ModelInfo
 	FragmentsDir          string
 	fragments             *bytes.Buffer
+	ApiPrefix             string
 }
 
 // NewConfig create a new code config
@@ -971,7 +985,8 @@ func NewConfig(templateLoader TemplateLoader) *Config {
 	conf.Overwrite = true
 
 	conf.Module = module
-	conf.ModelFQPN = module + "/" + modelPackageName
+	//conf.ModelFQPN = module + "/" + modelPackageName
+	conf.ModelFQPN = "github.com/ACPMFrance/crm-proxy/model"
 	conf.DaoFQPN = module + "/" + daoPackageName
 	conf.APIFQPN = module + "/" + apiPackageName
 

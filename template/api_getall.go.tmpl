@@ -1,19 +1,19 @@
 {{define "api_getall.go.tmpl"}}
-// GetAll{{.StructName}} is a function to get a slice of record(s) from {{.TableName}} table in the {{.DatabaseName}} database
+// GetAll{{.StructName | pluralize}} is a function to get a slice of record(s) from {{.TableName}} table in the {{.DatabaseName}} database
 // @Summary Get list of {{.StructName}}
 // @Tags {{.StructName}}
-// @Description GetAll{{.StructName}} is a handler to get a slice of record(s) from {{.TableName}} table in the {{.DatabaseName}} database
+// @Description GetAll{{.StructName | pluralize}} is a handler to get a slice of record(s) from {{.TableName}} table in the {{.DatabaseName}} database
 // @Accept  json
 // @Produce  json
 // @Param   page     query    int     false        "page requested (defaults to 0)"
-// @Param   pagesize query    int     false        "number of records in a page  (defaults to 20)"
+// @Param   pageSize query    int     false        "number of records in a page  (defaults to 20)"
 // @Param   order    query    string  false        "db sort order column"
 // @Success 200 {object} {{.apiPackageName}}.PagedResults{data=[]{{.modelPackageName}}.{{.StructName}}}
 // @Failure 400 {object} {{.apiPackageName}}.HTTPError
 // @Failure 404 {object} {{.apiPackageName}}.HTTPError
-// @Router /{{.StructName | toLower}} [get]
-// http "{{$.serverScheme}}://{{$.serverHost}}{{if ne $.serverPort 80}}:{{$.serverPort}}{{end}}/{{.StructName | toLower}}?page=0&pagesize=20" X-Api-User:user123
-func GetAll{{.StructName}}(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+// @Router /{{.StructName | toLower | pluralize}} [get]
+// http "{{$.serverScheme}}://{{$.serverHost}}{{if ne $.serverPort 80}}:{{$.serverPort}}{{end}}/{{.StructName | toLower | pluralize}}?page=0&pageSize=20" X-Api-User:user123
+func GetAll{{.StructName | pluralize}}(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := initializeContext(r)
     page, err := readInt(r, "page", 0)
 	if err != nil || page < 0 {
@@ -21,8 +21,8 @@ func GetAll{{.StructName}}(w http.ResponseWriter, r *http.Request, ps httprouter
 		return
 	}
 
-	pagesize, err := readInt(r, "pagesize", 20)
-	if err != nil || pagesize <= 0 {
+	pageSize, err := readInt(r, "pageSize", 20)
+	if err != nil || pageSize <= 0 {
 		returnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
 		return
 	}
@@ -34,13 +34,13 @@ func GetAll{{.StructName}}(w http.ResponseWriter, r *http.Request, ps httprouter
 		return
 	}
 
-    records, totalRows, err :=  {{.daoPackageName}}.GetAll{{.StructName}}(ctx, page, pagesize, order)
+    records, totalRows, err :=  {{.daoPackageName}}.GetAll{{.StructName | pluralize}}(ctx, int(page), int(pageSize), order)
 	if err != nil {
 	    returnError(ctx, w, r, err)
 		return
 	}
 
-	result := &PagedResults{Page: page, PageSize: pagesize, Data: records, TotalRecords: totalRows}
+	result := &PagedResults{Page: page, PageSize: pageSize, Data: records, TotalRecords: totalRows}
 	writeJSON(ctx, w, result)
 }
 {{end}}

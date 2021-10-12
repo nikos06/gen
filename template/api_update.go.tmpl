@@ -24,19 +24,19 @@ func Update{{.StructName}}(w http.ResponseWriter, r *http.Request, ps httprouter
 	}
 {{end}}{{end}}
 
-	{{.StructName | toLower}} := &{{.modelPackageName}}.{{.StructName}}{}
-	if err := readJSON(r, {{.StructName | toLower}}); err != nil {
+	{{.StructName | toLower | printf "%s_"}} := &{{.modelPackageName}}.{{.StructName}}{}
+	if err := readJSON(r, {{.StructName | toLower | printf "%s_"}}); err != nil {
 		returnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
 		return
 	}
 
-   if err := {{.StructName | toLower}}.BeforeSave(); err != nil {
+   if err := {{.StructName | toLower | printf "%s_"}}.BeforeSave({{.daoPackageName}}.DB); err != nil {
       returnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
    }
 
-   {{.StructName | toLower}}.Prepare()
+   {{.StructName | toLower | printf "%s_"}}.Prepare()
 
-   if err := {{.StructName | toLower}}.Validate( {{.modelPackageName}}.Update); err != nil {
+   if err := {{.StructName | toLower | printf "%s_"}}.Validate( {{.modelPackageName}}.Update); err != nil {
       returnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
       return
    }
@@ -46,15 +46,14 @@ func Update{{.StructName}}(w http.ResponseWriter, r *http.Request, ps httprouter
 		return
 	}
 
-	{{.StructName | toLower}}, _, err = {{.daoPackageName}}.Update{{.StructName}}(ctx,
+	{{.StructName | toLower | printf "%s_"}}, _, err = {{.daoPackageName}}.Update{{.StructName}}(ctx,
 	{{range $field := .TableInfo.CodeFields}} {{ if $field.PrimaryKeyArgName }} {{$field.PrimaryKeyArgName}},{{end}}{{end}}
-	{{.StructName | toLower}})
+	{{.StructName | toLower | printf "%s_"}})
 	if err != nil {
 	    returnError(ctx, w, r, err)
    	    return
 	}
 
-	writeJSON(ctx, w, {{.StructName | toLower}})
+	writeJSON(ctx, w, {{.StructName | toLower | printf "%s_"}})
 }
 {{end}}
-

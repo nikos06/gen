@@ -187,7 +187,8 @@ func initialize(conf *dbmeta.Config) {
 	conf.Overwrite = true
 
 	conf.Module = module
-	conf.ModelFQPN = module + "/" + modelPackageName
+	//conf.ModelFQPN = module + "/" + modelPackageName
+	conf.ModelFQPN = "github.com/ACPMFrance/crm-proxy/model"
 	conf.DaoFQPN = module + "/" + daoPackageName
 	conf.APIFQPN = module + "/" + apiPackageName
 

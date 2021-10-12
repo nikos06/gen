@@ -14,7 +14,7 @@
       "go_type": "bool",
       "json_type": "Boolean",
       "protobuf_type": "bool",
-      "guregu_type": "null.Int",
+      "guregu_type": "null.Bool",
       "go_nullable_type": "sql.NullBool",
       "swagger_type": "bool"
     },
@@ -446,6 +446,15 @@
     },
     {
       "sql_type": "uuid",
+      "go_type": "string",
+      "json_type": "Text",
+      "protobuf_type": "string",
+      "guregu_type": "null.String",
+      "go_nullable_type": "sql.NullString",
+      "swagger_type": "string"
+    },
+    {
+      "sql_type": "uniqueidentifier",
       "go_type": "string",
       "json_type": "Text",
       "protobuf_type": "string",

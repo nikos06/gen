@@ -7,7 +7,7 @@ import (
     "{{.daoFQPN}}"
 
 	"github.com/gin-gonic/gin"
-	"github.com/guregu/null"
+	"gopkg.in/guregu/null.v4"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -16,19 +16,19 @@ var (
 )
 
 func config{{.StructName}}Router(router *httprouter.Router) {
-	router.GET("/{{.StructName | toLower}}", GetAll{{.StructName}})
-	router.POST("/{{.StructName | toLower}}", Add{{.StructName}})
-	router.GET("/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", Get{{.StructName}})
-	router.PUT("/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", Update{{.StructName}})
-	router.DELETE("/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", Delete{{.StructName}})
+	router.GET("{{.apiPrefix}}/{{.StructName | pluralize | toLower}}", GetAll{{.StructName | pluralize}})
+	router.POST("{{.apiPrefix}}/{{.StructName | toLower}}", Add{{.StructName}})
+	router.GET("{{.apiPrefix}}/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", Get{{.StructName}})
+	router.PUT("{{.apiPrefix}}/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", Update{{.StructName}})
+	router.DELETE("{{.apiPrefix}}/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", Delete{{.StructName}})
 }
 
 func configGin{{.StructName}}Router(router gin.IRoutes) {
-	router.GET("/{{.StructName | toLower}}", ConverHttprouterToGin(GetAll{{.StructName}}))
-	router.POST("/{{.StructName | toLower}}", ConverHttprouterToGin(Add{{.StructName}}))
-	router.GET("/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", ConverHttprouterToGin(Get{{.StructName}}))
-	router.PUT("/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", ConverHttprouterToGin(Update{{.StructName}}))
-	router.DELETE("/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", ConverHttprouterToGin(Delete{{.StructName}}))
+	router.GET("{{.apiPrefix}}/{{.StructName | pluralize | toLower}}", ConverHttprouterToGin(GetAll{{.StructName | pluralize}}))
+	router.POST("{{.apiPrefix}}/{{.StructName | toLower}}", ConverHttprouterToGin(Add{{.StructName}}))
+	router.GET("{{.apiPrefix}}/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", ConverHttprouterToGin(Get{{.StructName}}))
+	router.PUT("{{.apiPrefix}}/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", ConverHttprouterToGin(Update{{.StructName}}))
+	router.DELETE("{{.apiPrefix}}/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", ConverHttprouterToGin(Delete{{.StructName}}))
 }
 
 {{template "api_getall.go.tmpl" .}}

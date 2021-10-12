@@ -61,9 +61,9 @@ help: ## This help.
 ## Build of binaries
 ##
 ####################################################################################################################
-all: example test ## build example and run tests
+all: server test ## build server and run tests
 
-binaries: example ## build binaries in bin dir
+binaries: server ## build binaries in bin dir
 
 create_dir:
 	@mkdir -p $(BIN_DIR)
@@ -85,10 +85,10 @@ build_app: create_dir
 		packr2 build -o $(BIN_DIR)/$(BIN_NAME) -a -ldflags '$(COMPILE_LDFLAGS)' $(APP_PATH)
 
 
-example: build_info ## build example binary in bin dir
-	@echo "build example server"
-	swag init --dir .  --generalInfo ./app/server/main.go
-	make BIN_NAME=example APP_PATH=$(PROJ_PATH)/app/server build_app
+server: build_info ## build server binary in bin dir
+	@echo "build server"
+	swag init --dir .  --generalInfo ./main.go
+	make BIN_NAME=server APP_PATH=$(PROJ_PATH) build_app
 	@echo ''
 	@echo ''
 
@@ -100,14 +100,14 @@ example: build_info ## build example binary in bin dir
 ##
 ####################################################################################################################
 
-clean_binaries: clean_example  ## clean all binaries in bin dir
+clean_binaries: clean_server  ## clean all binaries in bin dir
 
 
 clean_binary: ## clean binary in bin dir
 	rm -f $(BIN_DIR)/$(BIN_NAME)
 
-clean_example: ## clean example
-	make BIN_NAME=example clean_binary
+clean_server: ## clean server
+	make BIN_NAME=server clean_binary
 
 
 

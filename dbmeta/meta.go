@@ -22,11 +22,13 @@ type metaDataLoader func(db *sql.DB, sqlType, sqlDatabase, tableName string) (Db
 
 var metaDataFuncs = make(map[string]metaDataLoader)
 var sqlMappings = make(map[string]*SQLMapping)
+var MissingColumns = make(map[string][]string)
 
 func init() {
 	metaDataFuncs["sqlite3"] = LoadSqliteMeta
 	metaDataFuncs["sqlite"] = LoadSqliteMeta
 	metaDataFuncs["mssql"] = LoadMsSQLMeta
+	metaDataFuncs["odbc"] = LoadD365Meta
 	metaDataFuncs["postgres"] = LoadPostgresMeta
 	metaDataFuncs["mysql"] = LoadMysqlMeta
 }
@@ -447,6 +449,7 @@ func formatFieldName(nameFormat string, name string) string {
 	default:
 		jsonName = name
 	}
+	jsonName = strings.ReplaceAll(jsonName, "__", "_")
 	return jsonName
 }
 
