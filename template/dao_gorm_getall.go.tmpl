@@ -1,14 +1,13 @@
 {{define "dao_gorm_getall.go.tmpl"}}
 // GetAll{{.StructName|pluralize}} is a function to get a slice of record(s) from {{.TableName}} table in the {{.DatabaseName}} database
-// params - page     - page requested (defaults to 0)
-// params - pagesize - number of records in a page  (defaults to 20)
-// params - order    - db sort order column
-// error - ErrNotFound, db Find error
+//  params - page     - page requested (defaults to 1)
+//  params - pagesize - number of records in a page  (defaults to 20)
+//  params - order    - db sort order column
+//  error - ErrNotFound, db Find error
 func GetAll{{.StructName|pluralize}}(ctx context.Context, page, pagesize int, order string) (results []*{{.modelPackageName}}.{{.StructName}}, totalRows int64, err error) {
 
     record := &{{.modelPackageName}}.{{.StructName}}{}
     resultOrm := record.Preload(DB).Model(record)
-	//resultOrm := DB.Model(&{{.modelPackageName}}.{{.StructName}}{})
     resultOrm.Count(&totalRows)
 
 	if page > 0 {
@@ -22,9 +21,30 @@ func GetAll{{.StructName|pluralize}}(ctx context.Context, page, pagesize int, or
 		resultOrm = resultOrm.Order(order)
 	}
 
+    {{/*
+    {{ $status := 1 }}
+    {{ if eq .TableName "subscriptions" }}{{ $status = 940000000 }}{{- end}}
+    {{ if eq .TableName "mailing_lists" }}{{ $status = 0 }}{{- end}}
+    {{range $field := .TableInfo.CodeFields}}
+    {{ if eq $field.GoFieldName "StatusID" }}
+	var s model.Status
+	if err = s.GetFromEntityStateStatus(DB, record.CrmTableName(), 0, {{ $status }}); err != nil {
+		return nil, -1, err
+	}
+	resultOrm.Where("status_id = ?", s.ID)
+	{{- end}}
+	{{- end}}
+	*/}}
+
 	if err = resultOrm.Find(&results).Error; err != nil {
 	    err = ErrNotFound
 		return nil, -1, err
+	}
+
+	for _, r := range results {
+		if err = r.PopulateCount(DB).Error; err != nil {
+		    return nil, -1, err
+		}
 	}
 
 	return results, totalRows, nil

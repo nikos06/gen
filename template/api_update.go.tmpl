@@ -5,13 +5,15 @@
 // @Tags {{.StructName}}
 // @Accept  json
 // @Produce  json
-{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}// @Param  {{ $field.PrimaryKeyArgName }} path {{ $field.SQLMapping.SwaggerType }} true "{{ $field.ColumnMeta.Name }}"{{end}}{{end}}
+{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName -}}
+// @Param  {{ $field.PrimaryKeyArgName }} path {{ $field.SQLMapping.SwaggerType }} true "{{ $field.ColumnMeta.Name }}"
+{{end}}{{end -}}
 // @Param  {{.StructName}} body {{.modelPackageName}}.{{.StructName}} true "Update {{.StructName}} record"
-// @Success 200 {object} {{.modelPackageName}}.{{.StructName}}
+// @Success 200 {object} {{.apiPackageName}}.Results{results={{.modelPackageName}}.{{.StructName}}}
 // @Failure 400 {object} {{.apiPackageName}}.HTTPError
 // @Failure 404 {object} {{.apiPackageName}}.HTTPError
-// @Router /{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/{ {{- $field.PrimaryKeyArgName -}} }{{end}}{{end}} [put]
-// echo '{{ToJSON .TableInfo.Instance 0}}' | http PUT "{{$.serverScheme}}://{{$.serverHost}}{{if ne $.serverPort 80}}:{{$.serverPort}}{{end}}/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/{{ $field.FakeData }}{{end}}{{end}}"  X-Api-User:user123
+// @Router /entity/{{.TableName | singular | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/{ {{- $field.PrimaryKeyArgName -}} }{{end}}{{end}} [put]
+// @Security ApiKeyAuthorization
 func Update{{.StructName}}(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := initializeContext(r)
 {{range $field := .TableInfo.CodeFields}}
@@ -54,6 +56,6 @@ func Update{{.StructName}}(w http.ResponseWriter, r *http.Request, ps httprouter
    	    return
 	}
 
-	writeJSON(ctx, w, {{.StructName | toLower | printf "%s_"}})
+	writeResults(ctx, w, {{.StructName | toLower | printf "%s_"}})
 }
 {{end}}

@@ -1,22 +1,22 @@
 {{define "api_getall.go.tmpl"}}
+{{/* // @Param   order    query    string  false        "db sort order column" */}}
 // GetAll{{.StructName | pluralize}} is a function to get a slice of record(s) from {{.TableName}} table in the {{.DatabaseName}} database
 // @Summary Get list of {{.StructName}}
 // @Tags {{.StructName}}
 // @Description GetAll{{.StructName | pluralize}} is a handler to get a slice of record(s) from {{.TableName}} table in the {{.DatabaseName}} database
-// @Accept  json
 // @Produce  json
-// @Param   page     query    int     false        "page requested (defaults to 0)"
+// @Param   page     query    int     false        "page requested (defaults to 1)"
 // @Param   pageSize query    int     false        "number of records in a page  (defaults to 20)"
-// @Param   order    query    string  false        "db sort order column"
 // @Success 200 {object} {{.apiPackageName}}.PagedResults{data=[]{{.modelPackageName}}.{{.StructName}}}
-// @Failure 400 {object} {{.apiPackageName}}.HTTPError
-// @Failure 404 {object} {{.apiPackageName}}.HTTPError
-// @Router /{{.StructName | toLower | pluralize}} [get]
-// http "{{$.serverScheme}}://{{$.serverHost}}{{if ne $.serverPort 80}}:{{$.serverPort}}{{end}}/{{.StructName | toLower | pluralize}}?page=0&pageSize=20" X-Api-User:user123
+// @Failure 400 {object} {{.apiPackageName}}.ErrBadParams
+// @Failure 404 {object} {{.apiPackageName}}.ErrNotFound "ErrNotFound, db record for id not found - returns NotFound HTTP 404 not found error"
+// @Failure 500 {object} {{.apiPackageName}}.ErrDefault "Unknown error - returns HTTP 500 internal server error"
+// @Router /list/{{.TableName | pluralize | toLower}} [get]
+// @Security ApiKeyAuthorization
 func GetAll{{.StructName | pluralize}}(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := initializeContext(r)
-    page, err := readInt(r, "page", 0)
-	if err != nil || page < 0 {
+    page, err := readInt(r, "page", 1)
+	if err != nil || page < 1 {
 		returnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
 		return
 	}
@@ -40,7 +40,15 @@ func GetAll{{.StructName | pluralize}}(w http.ResponseWriter, r *http.Request, p
 		return
 	}
 
-	result := &PagedResults{Page: page, PageSize: pageSize, Data: records, TotalRecords: totalRows}
-	writeJSON(ctx, w, result)
+    result := &PagedResults{
+        Page: page,
+        PageSize: pageSize,
+        TotalRecords: totalRows,
+        Results: Results{
+            Data: records,
+            Version: "{{.SwaggerInfo.Version}}",
+        },
+    }
+    writeJSON(ctx, w, result)
 }
 {{end}}

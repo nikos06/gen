@@ -16,23 +16,36 @@ var (
 )
 
 func config{{.StructName}}Router(router *httprouter.Router) {
-	router.GET("{{.apiPrefix}}/{{.StructName | pluralize | toLower}}", GetAll{{.StructName | pluralize}})
-	router.POST("{{.apiPrefix}}/{{.StructName | toLower}}", Add{{.StructName}})
-	router.GET("{{.apiPrefix}}/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", Get{{.StructName}})
-	router.PUT("{{.apiPrefix}}/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", Update{{.StructName}})
-	router.DELETE("{{.apiPrefix}}/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", Delete{{.StructName}})
+	router.GET("{{.apiPrefix}}/list/{{.TableName | pluralize | toLower}}", GetAll{{.StructName | pluralize}})
+	router.GET("{{.apiPrefix}}/entity/{{.TableName | singular | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", Get{{.StructName}})
+	{{ if or (eq .TableName "subscriptions") (eq .TableName "mailing_lists") (eq .TableName "media") (eq .TableName "services") (eq .TableName "contacts") (eq .TableName "businesses") }}
+	router.GET("{{.apiPrefix}}/list/{{.TableName | singular | toLower}}/:argID/:linkID", Get{{.StructName}}LinkedEntities)
+	{{end}}
+	{{/*
+	//router.POST("{{.apiPrefix}}/entity/{{.TableName | singular | toLower}}", Add{{.StructName}})
+	//router.PUT("{{.apiPrefix}}/entity/{{.TableName | singular | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", Update{{.StructName}})
+	//router.DELETE("{{.apiPrefix}}/entity/{{.TableName | singular | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", Delete{{.StructName}})
+	*/}}
 }
 
 func configGin{{.StructName}}Router(router gin.IRoutes) {
-	router.GET("{{.apiPrefix}}/{{.StructName | pluralize | toLower}}", ConverHttprouterToGin(GetAll{{.StructName | pluralize}}))
-	router.POST("{{.apiPrefix}}/{{.StructName | toLower}}", ConverHttprouterToGin(Add{{.StructName}}))
-	router.GET("{{.apiPrefix}}/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", ConverHttprouterToGin(Get{{.StructName}}))
-	router.PUT("{{.apiPrefix}}/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", ConverHttprouterToGin(Update{{.StructName}}))
-	router.DELETE("{{.apiPrefix}}/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", ConverHttprouterToGin(Delete{{.StructName}}))
+	router.GET("{{.apiPrefix}}/list/{{.TableName | pluralize | toLower}}", ConverHttprouterToGin(GetAll{{.StructName | pluralize}}))
+	router.GET("{{.apiPrefix}}/entity/{{.TableName | singular | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", ConverHttprouterToGin(Get{{.StructName}}))
+	{{ if or (eq .TableName "subscriptions") (eq .TableName "mailing_lists") (eq .TableName "media") (eq .TableName "services") (eq .TableName "contacts") (eq .TableName "businesses") }}
+	router.GET("{{.apiPrefix}}/list/{{.TableName | singular | toLower}}/:argID/:linkID", ConverHttprouterToGin(Get{{.StructName}}LinkedEntities))
+	{{end}}
+	{{/*
+	router.POST("{{.apiPrefix}}/entity/{{.TableName | singular | toLower}}", ConverHttprouterToGin(Add{{.StructName}}))
+	router.PUT("{{.apiPrefix}}/entity/{{.TableName | singular | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", ConverHttprouterToGin(Update{{.StructName}}))
+	router.DELETE("{{.apiPrefix}}/entity/{{.TableName | singular | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/:{{$field.PrimaryKeyArgName}}{{end}}{{end -}}", ConverHttprouterToGin(Delete{{.StructName}}))
+	*/}}
 }
 
 {{template "api_getall.go.tmpl" .}}
+{{template "api_get_linked_entities.go.tmpl" .}}
 {{template "api_get.go.tmpl" .}}
+{{/*
 {{template "api_add.go.tmpl" .}}
 {{template "api_update.go.tmpl" .}}
 {{template "api_delete.go.tmpl" .}}
+*/}}

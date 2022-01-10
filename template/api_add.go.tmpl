@@ -6,11 +6,11 @@
 // @Accept  json
 // @Produce  json
 // @Param {{.StructName}} body {{.modelPackageName}}.{{.StructName}} true "Add {{.StructName}}"
-// @Success 200 {object} {{.modelPackageName}}.{{.StructName}}
+// @Success 200 {object} {{.apiPackageName}}.Results{results={{.modelPackageName}}.{{.StructName}}}
 // @Failure 400 {object} {{.apiPackageName}}.HTTPError
 // @Failure 404 {object} {{.apiPackageName}}.HTTPError
-// @Router /{{.StructName | toLower}} [post]
-// echo '{{ToJSON .TableInfo.Instance 0}}' | http POST "{{$.serverScheme}}://{{$.serverHost}}{{if ne $.serverPort 80}}:{{$.serverPort}}{{end}}/{{.StructName | toLower}}" X-Api-User:user123
+// @Router /entity/{{.TableName | singular | toLower}} [post]
+// @Security ApiKeyAuthorization
 func Add{{.StructName}}(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := initializeContext(r)
 	{{.StructName | toLower | printf "%s_"}} := &{{.modelPackageName}}.{{.StructName}}{}
@@ -44,6 +44,6 @@ func Add{{.StructName}}(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 		return
 	}
 
-	writeJSON(ctx, w, {{.StructName | toLower | printf "%s_"}})
+	writeResults(ctx, w, {{.StructName | toLower | printf "%s_"}})
 }
 {{end}}

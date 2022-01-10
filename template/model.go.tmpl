@@ -4,7 +4,7 @@ import (
     "database/sql"
     "time"
 
-    "github.com/satori/go.uuid"
+    "github.com/google/uuid"
     "gopkg.in/guregu/null.v4"
 	"gorm.io/gorm"
 )
@@ -23,25 +23,6 @@ DB Table Details
 {{if $ddl }}
 {{$ddl}}
 {{- end}}
-
-JSON Sample
--------------------------------------
-{{ToJSON .TableInfo.Instance 4}}
-
-{{if .TableInfo.Notes }}
-Comments
--------------------------------------
-{{ .TableInfo.Notes}}
-{{end}}
-
-*/
-
-// {{.StructName}} struct is a row record of the {{.TableName}} table in the {{.DatabaseName}} database
-/*
-type {{.StructName}} struct {
-    {{range .TableInfo.Fields}}{{.}}
-    {{end}}
-}
 */
 
 var {{.TableName}}TableInfo = &TableInfo {
@@ -71,14 +52,6 @@ var {{.TableName}}TableInfo = &TableInfo {
         {{end}}
 	},
 }
-
-
-/*
-// TableName sets the insert table name for this struct type
-func ({{.ShortStructName}} *{{.StructName}}) TableName() string {
-	return "{{.TableName}}"
-}
-*/
 
 // BeforeSave invoked before saving, return an error if field is not populated.
 func ({{.ShortStructName}} *{{.StructName}}) BeforeSave(tx *gorm.DB) error {

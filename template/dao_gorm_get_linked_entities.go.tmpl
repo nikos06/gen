@@ -1,0 +1,34 @@
+{{define "dao_gorm_get_linked_entities.go.tmpl"}}
+{{ if or (eq .TableName "subscriptions") (eq .TableName "mailing_lists") (eq .TableName "media") (eq .TableName "services") (eq .TableName "contacts") (eq .TableName "businesses") }}
+// Get{{.StructName}}LinkedEntities is a function to get a list of records of {{.TableName}} linked entity in the {{.DatabaseName}} database
+//  error - ErrNotFound, db Find error
+func Get{{.StructName}}LinkedEntities(ctx context.Context, argID string, linkID string) (results []model.ApiInterface, totalRows int64, err error) {
+	record := &{{.modelPackageName}}.{{.StructName}}{}
+	if err = record.PreloadLinkedEntity(DB, linkID).Take(record, "id = ?", argID).Error; err != nil {
+	    err = ErrNotFound
+		return nil, -1, err
+	}
+
+	results, err = record.GetLinkedEntities(DB, linkID)
+	if err != nil {
+	    err = ErrDb
+	    return nil, -1, err
+	}
+	if results == nil {
+	    err = ErrNotFound
+	    return nil, -1, err
+	}
+
+	for _, r := range results {
+		if err = r.PopulateCount(DB).Error; err != nil {
+		    err = ErrDb
+		    return nil, -1, err
+		}
+	}
+
+	totalRows = int64(len(results))
+
+	return results, totalRows, nil
+}
+{{end}}
+{{end}}

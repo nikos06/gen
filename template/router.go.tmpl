@@ -4,13 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/hex"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"time"
 	"unsafe"
-	_ "github.com/satori/go.uuid"
+	_ "github.com/google/uuid"
 
 	"{{.daoFQPN}}"
 	"{{.modelFQPN}}"
@@ -36,13 +35,18 @@ type CrudAPI struct {
 	TableInfo       *{{.modelPackageName}}.TableInfo {{ .Config.JSONTag "table_info" }}
 }
 
-
 // PagedResults results for pages GetAll results.
 type PagedResults struct {
-	Page         int64       {{ .Config.JSONTag "page" }}
-	PageSize     int64       {{ .Config.JSONTag "page_size" }}
-	Data         interface{} {{ .Config.JSONTag "data" }}
-    TotalRecords int64       {{ .Config.JSONTag "total_records" }}
+    Page         int64 `json:"page" example:"0"`
+    PageSize     int64 `json:"page_size" example:"20"`
+    TotalRecords int64 `json:"total_records" example:"1234"`
+    Results
+}
+
+// Results results
+type Results struct {
+    Version string      `json:"version" example:"1.0"`
+    Data    interface{} `json:"data"`
 }
 
 // HTTPError example
@@ -51,27 +55,63 @@ type HTTPError struct {
 	Message string `json:"{{ .Config.JSONFieldName "message"}}" example:"status bad request"`
 }
 
+type ErrNotFound struct {
+    Code    int    `json:"code" example:"404"`
+    Message string `json:"message" example:"record not found"`
+}
+
+type ErrUnableToMarshalJSON struct {
+    Code    int    `json:"code" example:"400"`
+    Message string `json:"message" example:"json payload corrupt"`
+}
+
+type ErrUpdateFailed struct {
+    Code    int    `json:"code" example:"400"`
+    Message string `json:"message" example:"db update error"`
+}
+
+type ErrInsertFailed struct {
+    Code    int    `json:"code" example:"400"`
+    Message string `json:"message" example:"db insert error"`
+}
+
+type ErrDeleteFailed struct {
+    Code    int    `json:"code" example:"400"`
+    Message string `json:"message" example:"db delete error"`
+}
+
+type ErrBadParams struct {
+    Code    int    `json:"code" example:"400"`
+    Message string `json:"message" example:"bad params error"`
+}
+
+type ErrDefault struct {
+    Code    int    `json:"code" example:"500"`
+    Message string `json:"message" example:"internal server error"`
+}
 
 // ConfigRouter configure http.Handler router
 func ConfigRouter() http.Handler {
 	router := httprouter.New()
 	{{range $tableName, $codeInfo := .tableInfos}}config{{$codeInfo.StructName}}Router(router)
     {{end}}
+    {{/*
 	router.GET("/ddl/:argID", GetDdl)
 	router.GET("/ddl", GetDdlEndpoints)
+	*/}}
 	return router
 }
-
 
 // ConfigGinRouter configure gin router
 func ConfigGinRouter(router gin.IRoutes) {
 	{{range $tableName, $codeInfo := .tableInfos}}configGin{{$codeInfo.StructName}}Router(router)
 	{{end}}
+    {{/*
 	router.GET("/ddl/:argID", ConverHttprouterToGin(GetDdl))
 	router.GET("/ddl", ConverHttprouterToGin(GetDdlEndpoints))
+	*/}}
 	return
 }
-
 
 // ConverHttprouterToGin wrap httprouter.Handle to gin.HandlerFunc
 func ConverHttprouterToGin(f httprouter.Handle) gin.HandlerFunc {
@@ -88,8 +128,6 @@ func ConverHttprouterToGin(f httprouter.Handle) gin.HandlerFunc {
 	}
 }
 
-
-
 func initializeContext(r *http.Request) (ctx context.Context) {
 	if ContextInitializer != nil {
 		ctx = ContextInitializer(r)
@@ -98,7 +136,6 @@ func initializeContext(r *http.Request) (ctx context.Context) {
 	}
 	return ctx
 }
-
 
 func ValidateRequest(ctx context.Context, r *http.Request, table string, action {{$.modelPackageName}}.Action) error {
 	if RequestValidator != nil {
@@ -116,9 +153,6 @@ type ContextInitializerFunc func(r *http.Request) (ctx context.Context)
 
 var ContextInitializer ContextInitializerFunc
 
-
-
-
 func readInt(r *http.Request, param string, v int64) (int64, error) {
 	p := r.FormValue(param)
 	if p == "" {
@@ -128,6 +162,14 @@ func readInt(r *http.Request, param string, v int64) (int64, error) {
 	return strconv.ParseInt(p, 10, 64)
 }
 
+func writeResults(ctx context.Context, w http.ResponseWriter, v interface{}) {
+    r := &Results{
+        "{{.SwaggerInfo.Version}}",
+        v,
+    }
+    writeJSON(ctx, w, r)
+}
+
 func writeJSON(ctx context.Context, w http.ResponseWriter, v interface{}) {
 	data, _ := json.Marshal(v)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -135,11 +177,14 @@ func writeJSON(ctx context.Context, w http.ResponseWriter, v interface{}) {
 	w.Write(data)
 }
 
-func writeRowsAffected(w http.ResponseWriter, rowsAffected int64) {
-	data, _ := json.Marshal(rowsAffected)
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Write(data)
+func writeRowsAffected(ctx context.Context, w http.ResponseWriter, rowsAffected int64) {
+    r := &Results{
+        "{{.SwaggerInfo.Version}}",
+        &struct {
+            deletedRows int64 `json:"deleted_rows"`
+        }{rowsAffected},
+    }
+    writeJSON(ctx, w, r)
 }
 
 func readJSON(r *http.Request, v interface{}) error {
@@ -151,33 +196,31 @@ func readJSON(r *http.Request, v interface{}) error {
 	return json.Unmarshal(buf, v)
 }
 
-
 func returnError(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
-	status :=0
-	switch err {
-	case {{.daoPackageName}}.ErrNotFound:
-		status = http.StatusBadRequest
-	case {{.daoPackageName}}.ErrUnableToMarshalJSON:
-		status = http.StatusBadRequest
-	case {{.daoPackageName}}.ErrUpdateFailed:
-		status = http.StatusBadRequest
-	case {{.daoPackageName}}.ErrInsertFailed:
-		status = http.StatusBadRequest
-	case {{.daoPackageName}}.ErrDeleteFailed:
-		status = http.StatusBadRequest
-	case {{.daoPackageName}}.ErrBadParams:
-		status = http.StatusBadRequest
-	default:
-		status = http.StatusBadRequest
-	}
-	er := HTTPError{
-		Code:    status,
-		Message: err.Error(),
-	}
+    status := http.StatusOK
+    switch err {
+    case dao.ErrNotFound:
+        status = http.StatusNotFound
+    case dao.ErrUnableToMarshalJSON:
+        status = http.StatusBadRequest
+    case dao.ErrUpdateFailed:
+        status = http.StatusBadRequest
+    case dao.ErrInsertFailed:
+        status = http.StatusBadRequest
+    case dao.ErrDeleteFailed:
+        status = http.StatusBadRequest
+    case dao.ErrBadParams:
+        status = http.StatusBadRequest
+    default:
+        status = http.StatusInternalServerError
+    }
+    er := HTTPError{
+        Code:    status,
+        Message: err.Error(),
+    }
 
-	SendJSON(w, r, er.Code, er)
+    SendJSON(w, r, er.Code, er)
 }
-
 
 // NewError example
 func NewError(ctx *gin.Context, status int, err error) {
@@ -188,9 +231,6 @@ func NewError(ctx *gin.Context, status int, err error) {
 	ctx.JSON(status, er)
 }
 
-
-
-
 func parseUint8(ps httprouter.Params, key string) (uint8, error) {
 	idStr := ps.ByName(key)
 	id, err := strconv.ParseInt(idStr, 10, 8)
@@ -199,6 +239,7 @@ func parseUint8(ps httprouter.Params, key string) (uint8, error) {
 	}
 	return uint8(id), err
 }
+
 func parseUint16(ps httprouter.Params, key string) (uint16, error) {
 	idStr := ps.ByName(key)
 	id, err := strconv.ParseInt(idStr, 10, 16)
@@ -207,6 +248,7 @@ func parseUint16(ps httprouter.Params, key string) (uint16, error) {
 	}
 	return uint16(id), err
 }
+
 func parseUint32(ps httprouter.Params, key string) (uint32, error) {
 	idStr := ps.ByName(key)
 	id, err := strconv.ParseInt(idStr, 10, 32)
@@ -215,6 +257,7 @@ func parseUint32(ps httprouter.Params, key string) (uint32, error) {
 	}
 	return uint32(id), err
 }
+
 func parseUint64(ps httprouter.Params, key string) (uint64, error) {
 	idStr := ps.ByName(key)
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -223,6 +266,7 @@ func parseUint64(ps httprouter.Params, key string) (uint64, error) {
 	}
 	return uint64(id), err
 }
+
 func parseInt(ps httprouter.Params, key string) (int, error) {
 	idStr := ps.ByName(key)
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -231,6 +275,7 @@ func parseInt(ps httprouter.Params, key string) (int, error) {
 	}
 	return int(id), err
 }
+
 func parseInt8(ps httprouter.Params, key string) (int8, error) {
 	idStr := ps.ByName(key)
 	id, err := strconv.ParseInt(idStr, 10, 8)
@@ -239,6 +284,7 @@ func parseInt8(ps httprouter.Params, key string) (int8, error) {
 	}
 	return int8(id), err
 }
+
 func parseInt16(ps httprouter.Params, key string) (int16, error) {
 	idStr := ps.ByName(key)
 	id, err := strconv.ParseInt(idStr, 10, 16)
@@ -247,6 +293,7 @@ func parseInt16(ps httprouter.Params, key string) (int16, error) {
 	}
 	return int16(id), err
 }
+
 func parseInt32(ps httprouter.Params, key string) (int32, error) {
 	idStr := ps.ByName(key)
 	id, err := strconv.ParseInt(idStr, 10, 32)
@@ -255,6 +302,7 @@ func parseInt32(ps httprouter.Params, key string) (int32, error) {
 	}
 	return int32(id), err
 }
+
 func parseInt64(ps httprouter.Params, key string) (int64, error) {
 	idStr := ps.ByName(key)
 	id, err := strconv.ParseInt(idStr, 10, 54)
@@ -263,10 +311,12 @@ func parseInt64(ps httprouter.Params, key string) (int64, error) {
 	}
 	return id, err
 }
+
 func parseString(ps httprouter.Params, key string) (string, error) {
 	idStr := ps.ByName(key)
 	return idStr, nil
 }
+
 func parseUUID(ps httprouter.Params, key string) (string, error) {
 	idStr := ps.ByName(key)
 	return idStr, nil
@@ -278,14 +328,10 @@ func parseBytes(ps httprouter.Params, key string) (string, error) {
     return string(hex), err
 }
 
-
-
-
-
+{{/*
 // GetDdl is a function to get table info for a table in the {{.DatabaseName}} database
 // @Summary Get table info for a table in the {{.DatabaseName}} database by argID
 // @Tags TableInfo
-// @ID argID
 // @Description GetDdl is a function to get table info for a table in the {{.DatabaseName}} database
 // @Accept  json
 // @Produce  json
@@ -294,7 +340,7 @@ func parseBytes(ps httprouter.Params, key string) (string, error) {
 // @Failure 400 {object} {{.apiPackageName}}.HTTPError
 // @Failure 404 {object} {{.apiPackageName}}.HTTPError "ErrNotFound, db record for id not found - returns NotFound HTTP 404 not found error"
 // @Router /ddl/{argID} [get]
-// http "{{$.serverScheme}}://{{$.serverHost}}{{if ne $.serverPort 80}}:{{$.serverPort}}{{end}}/ddl/xyz" X-Api-User:user123
+// @Security ApiKeyAuthorization
 func GetDdl(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := initializeContext(r)
 
@@ -314,8 +360,6 @@ func GetDdl(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	writeJSON(ctx, w, record)
 }
 
-
-
 // GetDdlEndpoints is a function to get a list of ddl endpoints available for tables in the {{.DatabaseName}} database
 // @Summary Gets a list of ddl endpoints available for tables in the {{.DatabaseName}} database
 // @Tags TableInfo
@@ -324,7 +368,7 @@ func GetDdl(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 // @Produce  json
 // @Success 200 {object} {{.apiPackageName}}.CrudAPI
 // @Router /ddl [get]
-// http "{{$.serverScheme}}://{{$.serverHost}}{{if ne $.serverPort 80}}:{{$.serverPort}}{{end}}/ddl" X-Api-User:user123
+// @Security ApiKeyAuthorization
 func GetDdlEndpoints(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := initializeContext(r)
 
@@ -335,6 +379,7 @@ func GetDdlEndpoints(w http.ResponseWriter, r *http.Request, ps httprouter.Param
 
 	writeJSON(ctx, w, crudEndpoints)
 }
+*/}}
 
 func init() {
 	crudEndpoints = make(map[string]*CrudAPI)

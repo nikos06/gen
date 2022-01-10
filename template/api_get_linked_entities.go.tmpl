@@ -1,0 +1,54 @@
+{{define "api_get_linked_entities.go.tmpl"}}
+{{ if or (eq .TableName "subscriptions") (eq .TableName "mailing_lists") (eq .TableName "media") (eq .TableName "services") (eq .TableName "contacts") (eq .TableName "businesses") }}
+// Get{{.StructName}}LinkedEntities is a function to get a list of records of a {{.TableName}} linked entity
+// @Summary Get a list of records of a {{.TableName}} linked entity
+// @Tags {{.StructName}}
+// @Description Get{{.StructName}}LinkedEntities is a function to get a list of records of a {{.TableName}} linked entity
+// @Produce  json
+// @Success 200 {object} {{.apiPackageName}}.PagedResults{}
+// @Failure 400 {object} {{.apiPackageName}}.ErrBadParams
+// @Failure 404 {object} {{.apiPackageName}}.ErrNotFound "ErrNotFound, db record for id not found - returns NotFound HTTP 404 not found error"
+// @Failure 500 {object} {{.apiPackageName}}.ErrDefault "Unknown error - returns HTTP 500 internal server error"
+// @Param   argID    path    string  true        "ID"
+// @Param   linkID   path    string  true        "linked entity"
+// @Router /list/{{.TableName | singular | toLower}}/{argID}/{linkID} [get]
+// @Security ApiKeyAuthorization
+func Get{{.StructName}}LinkedEntities(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := initializeContext(r)
+
+	argID, err := parseString(ps, "argID")
+	if err != nil {
+		returnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
+		return
+	}
+
+	linkID, err2 := parseString(ps, "linkID")
+	if err2 != nil {
+		returnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
+		return
+	}
+
+	if err := ValidateRequest(ctx, r, "{{.TableName}}", {{.modelPackageName}}.RetrieveOne); err != nil{
+		returnError(ctx, w, r, err)
+		return
+	}
+
+	records, totalRows, err3 := {{.daoPackageName}}.Get{{.StructName}}LinkedEntities(ctx, argID, linkID)
+	if err3 != nil {
+		returnError(ctx, w, r, err3)
+		return
+	}
+
+    result := &PagedResults{
+        Page: 0,
+        PageSize: totalRows,
+        TotalRecords: totalRows,
+        Results: Results{
+            Data: records,
+            Version: "{{.SwaggerInfo.Version}}",
+        },
+    }
+    writeJSON(ctx, w, result)
+}
+{{end}}
+{{end}}

@@ -5,12 +5,14 @@
 // @Tags {{.StructName}}
 // @Accept  json
 // @Produce  json
-{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}// @Param  {{ $field.PrimaryKeyArgName }} path {{ $field.SQLMapping.SwaggerType }} true "{{ $field.ColumnMeta.Name }}"{{end}}{{end}}
-// @Success 204 {object} {{.modelPackageName}}.{{.StructName}}
+{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName -}}
+// @Param  {{ $field.PrimaryKeyArgName }} path {{ $field.SQLMapping.SwaggerType }} true "{{ $field.ColumnMeta.Name }}"
+{{end}}{{end -}}
+// @Success 204 {object} {{.apiPackageName}}.Results{results={{.modelPackageName}}.{{.StructName}}}
 // @Failure 400 {object} {{.apiPackageName}}.HTTPError
 // @Failure 500 {object} {{.apiPackageName}}.HTTPError
-// @Router /{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/{ {{- $field.PrimaryKeyArgName -}} }{{end}}{{end}} [delete]
-// http DELETE "{{$.serverScheme}}://{{$.serverHost}}{{if ne $.serverPort 80}}:{{$.serverPort}}{{end}}/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/{{ $field.FakeData }}{{end}}{{end}}" X-Api-User:user123
+// @Router /entity/{{.TableName | singular | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/{ {{- $field.PrimaryKeyArgName -}} }{{end}}{{end}} [delete]
+// @Security ApiKeyAuthorization
 func Delete{{.StructName}}(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := initializeContext(r)
 {{range $field := .TableInfo.CodeFields}}
@@ -33,6 +35,6 @@ func Delete{{.StructName}}(w http.ResponseWriter, r *http.Request, ps httprouter
 	    return
 	}
 
-	writeRowsAffected(w, rowsAffected )
+	writeRowsAffected(ctx, w, rowsAffected )
 }
 {{end}}

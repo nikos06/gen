@@ -7,7 +7,7 @@ import (
 	"{{.modelFQPN}}"
 
     "gopkg.in/guregu/null.v4"
-    "github.com/satori/go.uuid"
+    "github.com/google/uuid"
 )
 
 var (
@@ -16,10 +16,11 @@ var (
     _ = uuid.UUID{}
 )
 
-
-
 {{template "dao_gorm_getall.go.tmpl" .}}
+{{template "dao_gorm_get_linked_entities.go.tmpl" .}}
 {{template "dao_gorm_get.go.tmpl" .}}
+{{/*
 {{template "dao_gorm_add.go.tmpl" .}}
 {{template "dao_gorm_update.go.tmpl" .}}
 {{template "dao_gorm_delete.go.tmpl" .}}
+*/}}

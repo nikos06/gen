@@ -2,14 +2,14 @@
 // Get{{.StructName}} is a function to get a single record from the {{.TableName}} table in the {{.DatabaseName}} database
 // @Summary Get record from table {{.StructName}} by {{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}} {{ $field.PrimaryKeyArgName }} {{end}}{{end}}
 // @Tags {{.StructName}}
-{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}// @ID {{ $field.PrimaryKeyArgName }}{{print "\n"}}{{end}}{{end}} // @Description Get{{.StructName}} is a function to get a single record from the {{.TableName}} table in the {{.DatabaseName}} database
-// @Accept  json
+// @Description Get{{.StructName}} is a function to get a single record from the {{.TableName}} table in the {{.DatabaseName}} database
 // @Produce  json
-{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}// @Param  {{ $field.PrimaryKeyArgName }} path {{ $field.SQLMapping.SwaggerType }} true "{{ $field.ColumnMeta.Name }}"{{print "\n"}}{{end}}{{end}} // @Success 200 {object} {{.modelPackageName}}.{{.StructName}}
-// @Failure 400 {object} {{.apiPackageName}}.HTTPError
-// @Failure 404 {object} {{.apiPackageName}}.HTTPError "ErrNotFound, db record for id not found - returns NotFound HTTP 404 not found error"
-// @Router /{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/{ {{- $field.PrimaryKeyArgName -}} }{{end}}{{end}} [get]
-// http "{{$.serverScheme}}://{{$.serverHost}}{{if ne $.serverPort 80}}:{{$.serverPort}}{{end}}/{{.StructName | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/{{ $field.FakeData }}{{end}}{{end}}" X-Api-User:user123
+{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}// @Param  {{ $field.PrimaryKeyArgName }} path {{ $field.SQLMapping.SwaggerType }} true "{{ $field.ColumnMeta.Name }}"{{print "\n"}}{{end}}{{end}} // @Success 200 {object} {{.apiPackageName}}.Results{results={{.modelPackageName}}.{{.StructName}}}
+// @Failure 400 {object} {{.apiPackageName}}.ErrBadParams
+// @Failure 404 {object} {{.apiPackageName}}.ErrNotFound "ErrNotFound, db record for id not found - returns NotFound HTTP 404 not found error"
+// @Failure 500 {object} {{.apiPackageName}}.ErrDefault "Unknown error - returns HTTP 500 internal server error"
+// @Router /entity/{{.TableName | singular | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/{ {{- $field.PrimaryKeyArgName -}} }{{end}}{{end}} [get]
+// @Security ApiKeyAuthorization
 func Get{{.StructName}}(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := initializeContext(r)
 {{range $field := .TableInfo.CodeFields}}
@@ -33,6 +33,6 @@ func Get{{.StructName}}(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 		return
 	}
 
-	writeJSON(ctx, w, record)
+	writeResults(ctx, w, record)
 }
 {{end}}

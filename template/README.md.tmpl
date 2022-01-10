@@ -49,7 +49,7 @@ The swagger web ui contains the documentation for the http server, it also provi
 ## REST urls for fetching data
 
 {{range $tableName, $codeInfo := .tableInfos}}
-* {{$.serverScheme}}://{{$.serverHost}}{{if ne $.serverPort 80}}:{{$.serverPort}}{{end}}/{{$codeInfo.StructName | toLower}}{{ end }}
+* {{$.serverScheme}}://{{$.serverHost}}{{if ne $.serverPort 80}}:{{$.serverPort}}{{end}}/{{.TableName | pluralize | toLower}}{{ end }}
 
 ## Project Generated Details
 {{markdownCodeBlock ".bash" (.Config.CmdLineWrapped)}}
