@@ -20,10 +20,10 @@ The code generation, will generate functions for
 
 // GetAllInvoices is a function to get a slice of record(s) from invoices table in the main database
 // params - page     - page requested (defaults to 0)
-// params - pagesize - number of records in a page  (defaults to 20)
+// params - pageSize - number of records in a page  (defaults to 20)
 // params - order    - db sort order column
 // error - ErrNotFound, db Find error
-func GetAllInvoices(ctx context.Context, page, pagesize int64, order string) (results []*model.Invoices, totalRows int, err error) {
+func GetAllInvoices(ctx context.Context, page, pageSize int64, order string) (results []*model.Invoices, totalRows int, err error) {
 	sql := "SELECT * FROM `invoices`"
 
 	if order != "" {
@@ -37,11 +37,11 @@ func GetAllInvoices(ctx context.Context, page, pagesize int64, order string) (re
 	}
 
 	if DB.DriverName() == "mssql" {
-		sql = fmt.Sprintf("%s order by %s OFFSET %d ROWS FETCH FIRST %d ROWS ONLY", sql, order, page, pagesize)
+		sql = fmt.Sprintf("%s order by %s OFFSET %d ROWS FETCH FIRST %d ROWS ONLY", sql, order, page, pageSize)
 	} else if DB.DriverName() == "postgres" {
-		sql = fmt.Sprintf("%s order by `%s` OFFSET %d LIMIT %d", sql, order, page, pagesize)
+		sql = fmt.Sprintf("%s order by `%s` OFFSET %d LIMIT %d", sql, order, page, pageSize)
 	} else {
-		sql = fmt.Sprintf("%s order by `%s` LIMIT %d, %d", sql, order, page, pagesize)
+		sql = fmt.Sprintf("%s order by `%s` LIMIT %d, %d", sql, order, page, pageSize)
 	}
 	sql = DB.Rebind(sql)
 

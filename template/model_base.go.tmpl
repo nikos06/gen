@@ -69,31 +69,31 @@ type Model interface {
 
 // TableInfo describes a table in the database
 type TableInfo struct {
-	Name    string        {{ .Config.JSONTag "name" }}
-	Columns []*ColumnInfo {{ .Config.JSONTag "columns" }}
+    Name    string        {{ .Config.JSONTag "name" }}
+    Columns []*ColumnInfo {{ .Config.JSONTag "columns" }}
 }
 
 // ColumnInfo describes a column in the database table
 type ColumnInfo struct {
-	Index              int    {{ .Config.JSONTag "index" }}
-	GoFieldName        string {{ .Config.JSONTag "go_field_name" }}
-	GoFieldType        string {{ .Config.JSONTag "go_field_type" }}
-	JSONFieldName      string {{ .Config.JSONTag "json_field_name" }}
-	ProtobufFieldName  string {{ .Config.JSONTag "protobuf_field_name" }}
-	ProtobufType       string {{ .Config.JSONTag "protobuf_field_type" }}
-	ProtobufPos        int    {{ .Config.JSONTag "protobuf_field_pos" }}
-	Comment            string {{ .Config.JSONTag "comment" }}
-	Notes              string {{ .Config.JSONTag "notes" }}
-	Name               string {{ .Config.JSONTag "name" }}
-	Nullable           bool   {{ .Config.JSONTag "is_nullable" }}
-	DatabaseTypeName   string {{ .Config.JSONTag "database_type_name" }}
-	DatabaseTypePretty string {{ .Config.JSONTag "database_type_pretty" }}
-	IsPrimaryKey       bool   {{ .Config.JSONTag "is_primary_key" }}
-	IsAutoIncrement    bool   {{ .Config.JSONTag "is_auto_increment" }}
-	IsArray            bool   {{ .Config.JSONTag "is_array" }}
-	ColumnType         string {{ .Config.JSONTag "column_type" }}
-	ColumnLength       int64  {{ .Config.JSONTag "column_length" }}
-	DefaultValue       string {{ .Config.JSONTag "default_value" }}
+    Index              int    {{ .Config.JSONTag "index" }}
+    GoFieldName        string {{ .Config.JSONTag "go_field_name" }}
+    GoFieldType        string {{ .Config.JSONTag "go_field_type" }}
+    JSONFieldName      string {{ .Config.JSONTag "json_field_name" }}
+    ProtobufFieldName  string {{ .Config.JSONTag "protobuf_field_name" }}
+    ProtobufType       string {{ .Config.JSONTag "protobuf_field_type" }}
+    ProtobufPos        int    {{ .Config.JSONTag "protobuf_field_pos" }}
+    Comment            string {{ .Config.JSONTag "comment" }}
+    Notes              string {{ .Config.JSONTag "notes" }}
+    Name               string {{ .Config.JSONTag "name" }}
+    Nullable           bool   {{ .Config.JSONTag "is_nullable" }}
+    DatabaseTypeName   string {{ .Config.JSONTag "database_type_name" }}
+    DatabaseTypePretty string {{ .Config.JSONTag "database_type_pretty" }}
+    IsPrimaryKey       bool   {{ .Config.JSONTag "is_primary_key" }}
+    IsAutoIncrement    bool   {{ .Config.JSONTag "is_auto_increment" }}
+    IsArray            bool   {{ .Config.JSONTag "is_array" }}
+    ColumnType         string {{ .Config.JSONTag "column_type" }}
+    ColumnLength       int64  {{ .Config.JSONTag "column_length" }}
+    DefaultValue       string {{ .Config.JSONTag "default_value" }}
 }
 
 // GetTableInfo retrieve TableInfo for a table

@@ -1,18 +1,30 @@
 {{define "dao_gorm_get.go.tmpl"}}
 // Get{{.StructName}} is a function to get a single record from the {{.TableName}} table in the {{.DatabaseName}} database
 //  error - ErrNotFound, db Find error
-func Get{{.StructName}}(ctx context.Context,{{range $field := .TableInfo.CodeFields}} {{ if $field.PrimaryKeyArgName }} {{$field.PrimaryKeyArgName}} {{$field.GoFieldType}},{{end}}{{end -}}) (record *{{.modelPackageName}}.{{.StructName}}, err error) {
-	record = &{{.modelPackageName}}.{{.StructName}}{}
-	if err = record.Preload(DB).Take(record,{{range $field := .TableInfo.CodeFields}} {{ if $field.PrimaryKeyArgName }} "{{$field.ColumnMeta.Name}} = ?",{{$field.PrimaryKeyArgName}},{{end}}{{end -}}).Error; err != nil {
-	    err = ErrNotFound
-		return nil, err
-	}
+func Get{{.StructName}}(ctx context.Context,{{range $field := .TableInfo.CodeFields}} {{ if $field.PrimaryKeyArgName }} {{$field.PrimaryKeyArgName}} {{$field.GoFieldType}},{{end}}{{end -}} expand string) (record *{{.modelPackageName}}.{{.StructName}}, err error) {
+    record = &{{.modelPackageName}}.{{.StructName}}{}
 
-    if err = record.PopulateCount(DB).Error; err != nil {
-        err = ErrDb
+    db := DB.Model(record)
+    if expand != "" {
+        expandableProperties := strings.Split(expand, ",")
+        if db, err = record.Expand(record, db, expandableProperties); err != nil {
+            ErrorExpandParam.Info = err.Error()
+            return nil, ErrorExpandParam
+        }
+    }
+
+    if err = record.PreloadApi(db).Take(record,{{range $field := .TableInfo.CodeFields}} {{ if $field.PrimaryKeyArgName }} "{{$field.ColumnMeta.Name}} = ?",{{$field.PrimaryKeyArgName}},{{end}}{{end -}}).Error; err != nil {
+        if errors.Is(err, gorm.ErrRecordNotFound) {
+            ErrorDBNotFound.Info = err.Error()
+            return nil, ErrorDBNotFound
+        }
         return nil, err
     }
 
-	return record, nil
+    if err = record.PopulateCount(DB).Error; err != nil {
+        return nil, err
+    }
+
+    return record, nil
 }
 {{end}}

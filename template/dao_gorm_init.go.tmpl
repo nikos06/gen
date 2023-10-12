@@ -1,96 +1,137 @@
 package {{.daoPackageName}}
 
 import (
-	"context"
-	"errors"
-	"fmt"
-	"reflect"
+    "context"
+    "errors"
+    "fmt"
+    "reflect"
 
-	"gorm.io/gorm"
+    "gorm.io/gorm"
 )
 
 // BuildInfo is used to define the application build info, and inject values into via the build process.
 type BuildInfo struct {
 
     // BuildDate date string of when build was performed filled in by -X compile flag
-	BuildDate    string
+    BuildDate    string
 
-	// LatestCommit date string of when build was performed filled in by -X compile flag
-	LatestCommit string
+    // LatestCommit date string of when build was performed filled in by -X compile flag
+    LatestCommit string
 
-	// BuildNumber date string of when build was performed filled in by -X compile flag
-	BuildNumber  string
+    // BuildNumber date string of when build was performed filled in by -X compile flag
+    BuildNumber  string
 
-	// BuiltOnIP date string of when build was performed filled in by -X compile flag
-	BuiltOnIP    string
+    // BuiltOnIP date string of when build was performed filled in by -X compile flag
+    BuiltOnIP    string
 
-	// BuiltOnOs date string of when build was performed filled in by -X compile flag
-	BuiltOnOs    string
+    // BuiltOnOs date string of when build was performed filled in by -X compile flag
+    BuiltOnOs    string
 
-	// RuntimeVer date string of when build was performed filled in by -X compile flag
-	RuntimeVer   string
+    // RuntimeVer date string of when build was performed filled in by -X compile flag
+    RuntimeVer   string
 }
 
 type LogSql func(ctx context.Context, sql string)
 
 var (
     // ErrNotFound error when record not found
-	ErrNotFound = fmt.Errorf("record Not Found")
+    ErrNotFound = fmt.Errorf("record Not Found")
 
-	// ErrUnableToMarshalJSON error when json payload corrupt
+    // ErrUnableToMarshalJSON error when json payload corrupt
     ErrUnableToMarshalJSON = fmt.Errorf("json payload corrupt")
 
     // ErrUpdateFailed error when update fails
-	ErrUpdateFailed = fmt.Errorf("db update error")
+    ErrUpdateFailed = fmt.Errorf("db update error")
 
-	// ErrInsertFailed error when insert fails
-	ErrInsertFailed = fmt.Errorf("db insert error")
+    // ErrInsertFailed error when insert fails
+    ErrInsertFailed = fmt.Errorf("db insert error")
 
-	// ErrDeleteFailed error when delete fails
-	ErrDeleteFailed = fmt.Errorf("db delete error")
+    // ErrDeleteFailed error when delete fails
+    ErrDeleteFailed = fmt.Errorf("db delete error")
 
-	// ErrBadParams error when bad params passed in
-	ErrBadParams = fmt.Errorf("bad params error")
+    // ErrBadParams error when bad params passed in
+    ErrBadParams = fmt.Errorf("bad params error")
 
-	// ErrDb error when there is a database error
-	ErrDb = fmt.Errorf("db error")
+    // ErrDb error when there is a database error
+    ErrDb = fmt.Errorf("db error")
 
     // DB reference to database
-	DB *gorm.DB
+    DB *gorm.DB
 
-	// AppBuildInfo reference to build info
-	AppBuildInfo *BuildInfo
+    // AppBuildInfo reference to build info
+    AppBuildInfo *BuildInfo
 
-	// Logger function that will be invoked before executing sql
-	Logger LogSql
+    // Logger function that will be invoked before executing sql
+    Logger LogSql
 )
 
 
 
 // Copy a src struct into a destination struct
 func Copy(dst interface{}, src interface{}) error {
-	dstV := reflect.Indirect(reflect.ValueOf(dst))
-	srcV := reflect.Indirect(reflect.ValueOf(src))
+    dstV := reflect.Indirect(reflect.ValueOf(dst))
+    srcV := reflect.Indirect(reflect.ValueOf(src))
 
-	if !dstV.CanAddr() {
-		return errors.New("copy to value is unaddressable")
-	}
+    if !dstV.CanAddr() {
+        return errors.New("copy to value is unaddressable")
+    }
 
-	if srcV.Type() != dstV.Type() {
-		return errors.New("different types can be copied")
-	}
+    if srcV.Type() != dstV.Type() {
+        return errors.New("different types can be copied")
+    }
 
-	for i := 0; i < dstV.NumField(); i++ {
-		f := srcV.Field(i)
-		if !isZeroOfUnderlyingType(f.Interface()) {
-			dstV.Field(i).Set(f)
-		}
-	}
+    for i := 0; i < dstV.NumField(); i++ {
+        f := srcV.Field(i)
+        if !isZeroOfUnderlyingType(f.Interface()) {
+            dstV.Field(i).Set(f)
+        }
+    }
 
-	return nil
+    return nil
 }
 
 
 func isZeroOfUnderlyingType(x interface{}) bool {
-	return x == nil || reflect.DeepEqual(x, reflect.Zero(reflect.TypeOf(x)).Interface())
+    return x == nil || reflect.DeepEqual(x, reflect.Zero(reflect.TypeOf(x)).Interface())
+}
+
+type Error struct {
+    Info string
+    Err  error
+}
+
+type ErrorBadParam Error
+type ErrorNotFound Error
+
+var (
+    ErrorFilterParam = &ErrorBadParam{
+        Err:  errors.New("incorrect filter param"),
+    }
+    ErrorExpandParam = &ErrorBadParam{
+        Err:  errors.New("incorrect expand param"),
+    }
+    ErrorDBNotFound = &ErrorNotFound{
+        Err:  errors.New("db error"),
+    }
+)
+
+func (e Error) Error() string {
+    return e.Err.Error() + ": " + e.Info
+}
+func (e Error) Is(err error) bool {
+    return errors.Is(e.Err, err)
+}
+
+func (e ErrorBadParam) Error() string {
+    return (Error)(e).Error()
+}
+func (e ErrorBadParam) Is(err error) bool {
+    return errors.Is(e.Err, err)
+}
+
+func (e ErrorNotFound) Error() string {
+    return (Error)(e).Error()
+}
+func (e ErrorNotFound) Is(err error) bool {
+    return errors.Is(e.Err, err)
 }

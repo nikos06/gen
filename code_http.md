@@ -32,41 +32,41 @@
 // @Accept  json
 // @Produce  json
 // @Param   page     query    int     false        "page requested (defaults to 0)"
-// @Param   pagesize query    int     false        "number of records in a page  (defaults to 20)"
+// @Param   pageSize query    int     false        "number of records in a page  (defaults to 20)"
 // @Param   order    query    string  false        "db sort order column"
 // @Success 200 {object} api.PagedResults{data=[]model.Invoices}
 // @Failure 400 {object} api.HTTPError
 // @Failure 404 {object} api.HTTPError
 // @Router /invoices [get]
-// http "http://127.0.0.1:8080/invoices?page=0&pagesize=20" X-Api-User:user123
+// http "http://127.0.0.1:8080/invoices?page=0&pageSize=20" X-Api-User:user123
 func GetAllInvoices(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := initializeContext(r)
     page, err := readInt(r, "page", 0)
 	if err != nil || page < 0 {
-		returnError(ctx, w, r, dao.ErrBadParams)
+		api_utils.ReturnError(ctx, w, r, dao.ErrBadParams)
 		return
 	}
 
-	pagesize, err := readInt(r, "pagesize", 20)
-	if err != nil || pagesize <= 0 {
-		returnError(ctx, w, r, dao.ErrBadParams)
+	pageSize, err := readInt(r, "pageSize", 20)
+	if err != nil || pageSize <= 0 {
+		api_utils.ReturnError(ctx, w, r, dao.ErrBadParams)
 		return
 	}
 
 	order := r.FormValue("order")
 
 	if err := ValidateRequest(ctx, r, "invoices", model.RetrieveMany); err != nil{
-		returnError(ctx, w, r, err)
+		api_utils.ReturnError(ctx, w, r, err)
 		return
 	}
 
-    records, totalRows, err :=  dao.GetAllInvoices(ctx, page, pagesize, order)
+    records, totalRows, err :=  dao.GetAllInvoices(ctx, page, pageSize, order)
 	if err != nil {
-	    returnError(ctx, w, r, err)
+	    api_utils.ReturnError(ctx, w, r, err)
 		return
 	}
 
-	result := &PagedResults{Page: page, PageSize: pagesize, Data: records, TotalRecords: totalRows}
+	result := &PagedResults{Page: page, PageSize: pageSize, Data: records, TotalRecords: totalRows}
 	writeJSON(ctx, w, result)
 }
 
@@ -95,7 +95,7 @@ func GetInvoices(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	argInvoiceID, err := parseInt32(ps, "argInvoiceID")
 	if err != nil {
-		returnError(ctx, w, r, err)
+		api_utils.ReturnError(ctx, w, r, err)
 		return
 	}
 
@@ -109,13 +109,13 @@ func GetInvoices(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 
 	if err := ValidateRequest(ctx, r, "invoices", model.RetrieveOne); err != nil{
-		returnError(ctx, w, r, err)
+		api_utils.ReturnError(ctx, w, r, err)
 		return
 	}
 
 	record, err := dao.GetInvoices(ctx,  argInvoiceID,        )
 	if err != nil {
-		returnError(ctx, w, r, err)
+		api_utils.ReturnError(ctx, w, r, err)
 		return
 	}
 
@@ -144,31 +144,31 @@ func AddInvoices(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	invoices := &model.Invoices{}
 
 	if err := readJSON(r, invoices); err != nil {
-		returnError(ctx, w, r, dao.ErrBadParams)
+		api_utils.ReturnError(ctx, w, r, dao.ErrBadParams)
 		return
 	}
 
 
    if err := invoices.BeforeSave(); err != nil {
-      returnError(ctx, w, r, dao.ErrBadParams)
+      api_utils.ReturnError(ctx, w, r, dao.ErrBadParams)
    }
 
    invoices.Prepare()
 
    if err := invoices.Validate(model.Create); err != nil {
-      returnError(ctx, w, r, dao.ErrBadParams)
+      api_utils.ReturnError(ctx, w, r, dao.ErrBadParams)
       return
    }
 
 	if err := ValidateRequest(ctx, r, "invoices", model.Create); err != nil{
-		returnError(ctx, w, r, err)
+		api_utils.ReturnError(ctx, w, r, err)
 		return
 	}
 
     var err error
 	invoices, _, err = dao.AddInvoices(ctx, invoices)
 	if err != nil {
-		returnError(ctx, w, r, err)
+		api_utils.ReturnError(ctx, w, r, err)
 		return
 	}
 
@@ -200,7 +200,7 @@ func UpdateInvoices(w http.ResponseWriter, r *http.Request, ps httprouter.Params
 
 	argInvoiceID, err := parseInt32(ps, "argInvoiceID")
 	if err != nil {
-		returnError(ctx, w, r, err)
+		api_utils.ReturnError(ctx, w, r, err)
 		return
 	}
 
@@ -215,23 +215,23 @@ func UpdateInvoices(w http.ResponseWriter, r *http.Request, ps httprouter.Params
 
 	invoices := &model.Invoices{}
 	if err := readJSON(r, invoices); err != nil {
-		returnError(ctx, w, r, dao.ErrBadParams)
+		api_utils.ReturnError(ctx, w, r, dao.ErrBadParams)
 		return
 	}
 
    if err := invoices.BeforeSave(); err != nil {
-      returnError(ctx, w, r, dao.ErrBadParams)
+      api_utils.ReturnError(ctx, w, r, dao.ErrBadParams)
    }
 
    invoices.Prepare()
 
    if err := invoices.Validate( model.Update); err != nil {
-      returnError(ctx, w, r, dao.ErrBadParams)
+      api_utils.ReturnError(ctx, w, r, dao.ErrBadParams)
       return
    }
 
 	if err := ValidateRequest(ctx, r, "invoices", model.Update); err != nil{
-		returnError(ctx, w, r, err)
+		api_utils.ReturnError(ctx, w, r, err)
 		return
 	}
 
@@ -239,7 +239,7 @@ func UpdateInvoices(w http.ResponseWriter, r *http.Request, ps httprouter.Params
 	  argInvoiceID,        
 	invoices)
 	if err != nil {
-	    returnError(ctx, w, r, err)
+	    api_utils.ReturnError(ctx, w, r, err)
    	    return
 	}
 
@@ -269,7 +269,7 @@ func DeleteInvoices(w http.ResponseWriter, r *http.Request, ps httprouter.Params
 
 	argInvoiceID, err := parseInt32(ps, "argInvoiceID")
 	if err != nil {
-		returnError(ctx, w, r, err)
+		api_utils.ReturnError(ctx, w, r, err)
 		return
 	}
 
@@ -283,13 +283,13 @@ func DeleteInvoices(w http.ResponseWriter, r *http.Request, ps httprouter.Params
 
 
 	if err := ValidateRequest(ctx, r, "invoices", model.Delete); err != nil{
-		returnError(ctx, w, r, err)
+		api_utils.ReturnError(ctx, w, r, err)
 		return
 	}
 
 	rowsAffected, err := dao.DeleteInvoices(ctx,  argInvoiceID,        )
 	if err != nil {
-	    returnError(ctx, w, r, err)
+	    api_utils.ReturnError(ctx, w, r, err)
 	    return
 	}
 

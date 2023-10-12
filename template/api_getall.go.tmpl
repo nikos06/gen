@@ -7,6 +7,9 @@
 // @Produce  json
 // @Param   page     query    int     false        "page requested (defaults to 1)"
 // @Param   pageSize query    int     false        "number of records in a page  (defaults to 20)"
+// @Param   order    query    string  false        "order clause, ex: created_on DESC"
+// @Param   filter   query    string  false        "filter clause, ex: field1 ne null and field2 contains 'Actif' and field3 eq 'string value'"
+// @Param   expand   query    string  false        "expand properties, ex: 'business,contact'. special value '_all' expands all properties"
 // @Success 200 {object} {{.apiPackageName}}.PagedResults{data=[]{{.modelPackageName}}.{{.StructName}}}
 // @Failure 400 {object} {{.apiPackageName}}.ErrBadParams
 // @Failure 404 {object} {{.apiPackageName}}.ErrNotFound "ErrNotFound, db record for id not found - returns NotFound HTTP 404 not found error"
@@ -14,31 +17,51 @@
 // @Router /list/{{.TableName | pluralize | toLower}} [get]
 // @Security ApiKeyAuthorization
 func GetAll{{.StructName | pluralize}}(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	ctx := initializeContext(r)
+    ctx := initializeContext(r)
     page, err := readInt(r, "page", 1)
-	if err != nil || page < 1 {
-		returnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
-		return
-	}
+    if err != nil {
+        api_utils.ReturnError(w, r, http.StatusBadRequest, fmt.Errorf("incorrect page value: %s", err))
+        return
+    }
+    if page < 1 {
+        api_utils.ReturnError(w, r, http.StatusBadRequest, fmt.Errorf("incorrect page value: %d", page))
+        return
+    }
 
-	pageSize, err := readInt(r, "pageSize", 20)
-	if err != nil || pageSize <= 0 {
-		returnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
-		return
-	}
+    pageSize, err := readInt(r, "pageSize", 20)
+    if err != nil {
+        api_utils.ReturnError(w, r, http.StatusBadRequest, fmt.Errorf("incorrect pageSize value: %s", err))
+        return
+    }
+    if page <= 0 {
+        api_utils.ReturnError(w, r, http.StatusBadRequest, fmt.Errorf("incorrect pageSize value: %d", page))
+        return
+    }
 
-	order := r.FormValue("order")
+    filter, err := readString(r, "filter", "")
+    if err != nil {
+        api_utils.ReturnError(w, r, http.StatusBadRequest, fmt.Errorf("incorrect filter value: %s", err))
+        return
+    }
 
-	if err := ValidateRequest(ctx, r, "{{.TableName}}", {{.modelPackageName}}.RetrieveMany); err != nil{
-		returnError(ctx, w, r, err)
-		return
-	}
+    expand, err := readString(r, "expand", "")
+    if err != nil {
+        api_utils.ReturnError(w, r, http.StatusBadRequest, err)
+        return
+    }
 
-    records, totalRows, err :=  {{.daoPackageName}}.GetAll{{.StructName | pluralize}}(ctx, int(page), int(pageSize), order)
-	if err != nil {
-	    returnError(ctx, w, r, err)
-		return
-	}
+    order := r.FormValue("order")
+
+    if err := ValidateRequest(ctx, r, "{{.TableName}}", {{.modelPackageName}}.RetrieveMany); err != nil{
+        api_utils.ReturnError(w, r, http.StatusBadRequest, err)
+        return
+    }
+
+    records, totalRows, err :=  {{.daoPackageName}}.GetAll{{.StructName | pluralize}}(ctx, int(page), int(pageSize), order, filter, expand)
+    if err != nil {
+        daoReturnError(w, r, err)
+        return
+    }
 
     result := &PagedResults{
         Page: page,

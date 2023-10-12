@@ -1,25 +1,44 @@
 {{define "dao_gorm_getall.go.tmpl"}}
 // GetAll{{.StructName|pluralize}} is a function to get a slice of record(s) from {{.TableName}} table in the {{.DatabaseName}} database
 //  params - page     - page requested (defaults to 1)
-//  params - pagesize - number of records in a page  (defaults to 20)
+//  params - pageSize - number of records in a page  (defaults to 20)
 //  params - order    - db sort order column
+//  params - filter   - filter(s) on columns
 //  error - ErrNotFound, db Find error
-func GetAll{{.StructName|pluralize}}(ctx context.Context, page, pagesize int, order string) (results []*{{.modelPackageName}}.{{.StructName}}, totalRows int64, err error) {
+func GetAll{{.StructName|pluralize}}(ctx context.Context, page, pageSize int, order string, filter string, expand string) (results []*{{.modelPackageName}}.{{.StructName}}, totalRows int64, err error) {
 
     record := &{{.modelPackageName}}.{{.StructName}}{}
-    resultOrm := record.Preload(DB).Model(record)
-    resultOrm.Count(&totalRows)
 
-	if page > 0 {
-		offset := (page - 1) * pagesize
-		resultOrm = resultOrm.Offset(offset).Limit(pagesize)
-	} else {
-		resultOrm = resultOrm.Limit(pagesize)
+    db := DB.Model(record)
+    if expand != "" {
+        expandableProperties := strings.Split(expand, ",")
+        if db, err = record.Expand(record, db, expandableProperties); err != nil {
+            ErrorExpandParam.Info = err.Error()
+            return nil, -1, ErrorExpandParam
+        }
     }
 
-	if order != "" {
-		resultOrm = resultOrm.Order(order)
-	}
+    resultOrm, where, err := dbAddFilter(db, record, filter)
+    if err != nil {
+        return nil, -1, err
+    }
+
+    if err = resultOrm.Where(where).Count(&totalRows).Error; err != nil {
+        return nil, -1, err
+    }
+
+    resultOrm = record.PreloadApi(resultOrm)
+
+    if page > 0 {
+        offset := (page - 1) * pageSize
+        resultOrm = resultOrm.Offset(offset).Limit(pageSize)
+    } else {
+        resultOrm = resultOrm.Limit(pageSize)
+    }
+
+    if order != "" {
+        resultOrm = resultOrm.Order(order)
+    }
 
     {{/*
     {{ $status := 1 }}
@@ -27,26 +46,25 @@ func GetAll{{.StructName|pluralize}}(ctx context.Context, page, pagesize int, or
     {{ if eq .TableName "mailing_lists" }}{{ $status = 0 }}{{- end}}
     {{range $field := .TableInfo.CodeFields}}
     {{ if eq $field.GoFieldName "StatusID" }}
-	var s model.Status
-	if err = s.GetFromEntityStateStatus(DB, record.CrmTableName(), 0, {{ $status }}); err != nil {
-		return nil, -1, err
-	}
-	resultOrm.Where("status_id = ?", s.ID)
-	{{- end}}
-	{{- end}}
-	*/}}
+    var s model.Status
+    if err = s.GetFromEntityStateStatus(DB, record.CrmTableName(), 0, {{ $status }}); err != nil {
+        return nil, -1, err
+    }
+    resultOrm.Where("status_id = ?", s.ID)
+    {{- end}}
+    {{- end}}
+    */}}
 
-	if err = resultOrm.Find(&results).Error; err != nil {
-	    err = ErrNotFound
-		return nil, -1, err
-	}
+    if err = resultOrm.Find(&results).Error; err != nil {
+        return nil, -1, err
+    }
 
-	for _, r := range results {
-		if err = r.PopulateCount(DB).Error; err != nil {
-		    return nil, -1, err
-		}
-	}
+    for _, r := range results {
+        if err = r.PopulateCount(DB).Error; err != nil {
+            return nil, -1, err
+        }
+    }
 
-	return results, totalRows, nil
+    return results, totalRows, nil
 }
 {{end}}

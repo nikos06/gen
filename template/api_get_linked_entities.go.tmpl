@@ -1,5 +1,5 @@
 {{define "api_get_linked_entities.go.tmpl"}}
-{{ if or (eq .TableName "subscriptions") (eq .TableName "mailing_lists") (eq .TableName "media") (eq .TableName "services") (eq .TableName "contacts") (eq .TableName "businesses") }}
+{{ if or (eq .TableName "mailing_lists") (eq .TableName "media") (eq .TableName "services") (eq .TableName "contacts") (eq .TableName "businesses") }}
 // Get{{.StructName}}LinkedEntities is a function to get a list of records of a {{.TableName}} linked entity
 // @Summary Get a list of records of a {{.TableName}} linked entity
 // @Tags {{.StructName}}
@@ -11,33 +11,40 @@
 // @Failure 500 {object} {{.apiPackageName}}.ErrDefault "Unknown error - returns HTTP 500 internal server error"
 // @Param   argID    path    string  true        "ID"
 // @Param   linkID   path    string  true        "linked entity"
+// @Param   expand   query   string  false       "expand properties, ex: 'business,contact'. special value '_all' expands all properties"
 // @Router /list/{{.TableName | singular | toLower}}/{argID}/{linkID} [get]
 // @Security ApiKeyAuthorization
 func Get{{.StructName}}LinkedEntities(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	ctx := initializeContext(r)
+    ctx := initializeContext(r)
 
-	argID, err := parseString(ps, "argID")
-	if err != nil {
-		returnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
-		return
-	}
+    argID, err := parseString(ps, "argID")
+    if err != nil {
+        api_utils.ReturnError(w, r, http.StatusBadRequest, fmt.Errorf("incorrect ID value: %s", err))
+        return
+    }
 
-	linkID, err2 := parseString(ps, "linkID")
-	if err2 != nil {
-		returnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
-		return
-	}
+    linkID, err := parseString(ps, "linkID")
+    if err != nil {
+        api_utils.ReturnError(w, r, http.StatusBadRequest, fmt.Errorf("incorrect link ID value: %s", err))
+        return
+    }
 
-	if err := ValidateRequest(ctx, r, "{{.TableName}}", {{.modelPackageName}}.RetrieveOne); err != nil{
-		returnError(ctx, w, r, err)
-		return
-	}
+    expand, err := readString(r, "expand", "")
+    if err != nil {
+        api_utils.ReturnError(w, r, http.StatusBadRequest, err)
+        return
+    }
 
-	records, totalRows, err3 := {{.daoPackageName}}.Get{{.StructName}}LinkedEntities(ctx, argID, linkID)
-	if err3 != nil {
-		returnError(ctx, w, r, err3)
-		return
-	}
+    if err := ValidateRequest(ctx, r, "{{.TableName}}", {{.modelPackageName}}.RetrieveOne); err != nil{
+        api_utils.ReturnError(w, r, http.StatusBadRequest, err)
+        return
+    }
+
+    records, totalRows, err := {{.daoPackageName}}.Get{{.StructName}}LinkedEntities(ctx, argID, linkID, expand)
+    if err != nil {
+        daoReturnError(w, r, err)
+        return
+    }
 
     result := &PagedResults{
         Page: 0,

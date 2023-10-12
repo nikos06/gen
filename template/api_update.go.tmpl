@@ -15,47 +15,47 @@
 // @Router /entity/{{.TableName | singular | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/{ {{- $field.PrimaryKeyArgName -}} }{{end}}{{end}} [put]
 // @Security ApiKeyAuthorization
 func Update{{.StructName}}(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	ctx := initializeContext(r)
+    ctx := initializeContext(r)
 {{range $field := .TableInfo.CodeFields}}
 {{ if $field.PrimaryKeyArgName }}
 
-	{{$field.PrimaryKeyArgName}}, err := {{$field.PrimaryKeyFieldParser}}(ps, "{{$field.PrimaryKeyArgName}}")
-	if err != nil {
-		returnError(ctx, w, r, err)
-		return
-	}
+    {{$field.PrimaryKeyArgName}}, err := {{$field.PrimaryKeyFieldParser}}(ps, "{{$field.PrimaryKeyArgName}}")
+    if err != nil {
+        api_utils.ReturnError(ctx, w, r, err)
+        return
+    }
 {{end}}{{end}}
 
-	{{.StructName | toLower | printf "%s_"}} := &{{.modelPackageName}}.{{.StructName}}{}
-	if err := readJSON(r, {{.StructName | toLower | printf "%s_"}}); err != nil {
-		returnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
-		return
-	}
+    {{.StructName | toLower | printf "%s_"}} := &{{.modelPackageName}}.{{.StructName}}{}
+    if err := readJSON(r, {{.StructName | toLower | printf "%s_"}}); err != nil {
+        api_utils.ReturnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
+        return
+    }
 
    if err := {{.StructName | toLower | printf "%s_"}}.BeforeSave({{.daoPackageName}}.DB); err != nil {
-      returnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
+      api_utils.ReturnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
    }
 
    {{.StructName | toLower | printf "%s_"}}.Prepare()
 
    if err := {{.StructName | toLower | printf "%s_"}}.Validate( {{.modelPackageName}}.Update); err != nil {
-      returnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
+      api_utils.ReturnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
       return
    }
 
-	if err := ValidateRequest(ctx, r, "{{.TableName}}", {{.modelPackageName}}.Update); err != nil{
-		returnError(ctx, w, r, err)
-		return
-	}
+    if err := ValidateRequest(ctx, r, "{{.TableName}}", {{.modelPackageName}}.Update); err != nil{
+        api_utils.ReturnError(ctx, w, r, err)
+        return
+    }
 
-	{{.StructName | toLower | printf "%s_"}}, _, err = {{.daoPackageName}}.Update{{.StructName}}(ctx,
-	{{range $field := .TableInfo.CodeFields}} {{ if $field.PrimaryKeyArgName }} {{$field.PrimaryKeyArgName}},{{end}}{{end}}
-	{{.StructName | toLower | printf "%s_"}})
-	if err != nil {
-	    returnError(ctx, w, r, err)
-   	    return
-	}
+    {{.StructName | toLower | printf "%s_"}}, _, err = {{.daoPackageName}}.Update{{.StructName}}(ctx,
+    {{range $field := .TableInfo.CodeFields}} {{ if $field.PrimaryKeyArgName }} {{$field.PrimaryKeyArgName}},{{end}}{{end}}
+    {{.StructName | toLower | printf "%s_"}})
+    if err != nil {
+        api_utils.ReturnError(ctx, w, r, err)
+           return
+    }
 
-	writeResults(ctx, w, {{.StructName | toLower | printf "%s_"}})
+    writeResults(ctx, w, {{.StructName | toLower | printf "%s_"}})
 }
 {{end}}

@@ -1,34 +1,48 @@
 {{define "dao_gorm_get_linked_entities.go.tmpl"}}
-{{ if or (eq .TableName "subscriptions") (eq .TableName "mailing_lists") (eq .TableName "media") (eq .TableName "services") (eq .TableName "contacts") (eq .TableName "businesses") }}
+{{ if or (eq .TableName "mailing_lists") (eq .TableName "media") (eq .TableName "services") (eq .TableName "contacts") (eq .TableName "businesses") }}
 // Get{{.StructName}}LinkedEntities is a function to get a list of records of {{.TableName}} linked entity in the {{.DatabaseName}} database
 //  error - ErrNotFound, db Find error
-func Get{{.StructName}}LinkedEntities(ctx context.Context, argID string, linkID string) (results []model.ApiInterface, totalRows int64, err error) {
-	record := &{{.modelPackageName}}.{{.StructName}}{}
-	if err = record.PreloadLinkedEntity(DB, linkID).Take(record, "id = ?", argID).Error; err != nil {
-	    err = ErrNotFound
-		return nil, -1, err
-	}
+func Get{{.StructName}}LinkedEntities(ctx context.Context, argID string, linkID string, expand string) (results []model.ApiInterface, totalRows int64, err error) {
+    record := &{{.modelPackageName}}.{{.StructName}}{}
+    odb := record.PreloadLinkedEntity(DB, linkID)
 
-	results, err = record.GetLinkedEntities(DB, linkID)
-	if err != nil {
-	    err = ErrDb
-	    return nil, -1, err
-	}
-	if results == nil {
-	    err = ErrNotFound
-	    return nil, -1, err
-	}
+    linkedRecord := model.MakeInstance(linkID)
+    db := DB.Model(linkedRecord)
 
-	for _, r := range results {
-		if err = r.PopulateCount(DB).Error; err != nil {
-		    err = ErrDb
-		    return nil, -1, err
-		}
-	}
+    if expand != "" {
+        expandableProperties := strings.Split(expand, ",")
+        if db, err = record.Expand(linkedRecord, db, expandableProperties); err != nil {
+            ErrorExpandParam.Info = err.Error()
+            return nil, -1, ErrorExpandParam
+        }
+        prefix := strcase.ToCamel(linkedRecord.TableName()) + "."
+        for k, _ := range db.Statement.Preloads {
+            odb.Preload(prefix + k)
+        }
+    }
 
-	totalRows = int64(len(results))
+    if err = odb.Take(record, "id = ?", argID).Error; err != nil {
+        if errors.Is(err, gorm.ErrRecordNotFound) {
+            ErrorDBNotFound.Info = err.Error()
+            return nil, -1, ErrorDBNotFound
+        }
+        return nil, -1, err
+    }
 
-	return results, totalRows, nil
+    results, err = record.GetLinkedEntities(db, linkID)
+    if err != nil {
+        return nil, -1, err
+    }
+
+    for _, r := range results {
+        if err = r.PopulateCount(DB).Error; err != nil {
+            return nil, -1, err
+        }
+    }
+
+    totalRows = int64(len(results))
+
+    return results, totalRows, nil
 }
 {{end}}
 {{end}}

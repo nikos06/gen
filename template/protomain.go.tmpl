@@ -34,11 +34,11 @@ func reportError(message string, err error) {
 
 func (s *Server) AuthFuncOverride(ctx context.Context, fullMethodName string) (context.Context, error) {
     // allowed_endpoints := map[string]bool{
-    // 	"/backend.Backend/CreateUser":   true,
+    //     "/backend.Backend/CreateUser":   true,
     // }
 
     // if allow, ok := allowed_endpoints[fullMethodName]; allow && ok {
-    // 	return ctx, nil
+    //     return ctx, nil
     // }
     return ctx, nil
 
@@ -59,7 +59,7 @@ func RunServer() {
     defer server.Cleanup()
 
     // if config.SentryDSN != "" {
-    // 	sentry.Init(sentry.ClientOptions{Dsn: config.SentryDSN})
+    //     sentry.Init(sentry.ClientOptions{Dsn: config.SentryDSN})
     // }
 
     grpcServer := grpc.NewServer(makeServerOptions(config)...)

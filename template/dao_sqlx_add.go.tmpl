@@ -2,11 +2,11 @@
 // Add{{.StructName}} is a function to add a single record to {{.TableName}} table in the {{.DatabaseName}} database
 // error - ErrInsertFailed, db save call failed
 func Add{{.StructName}}(ctx context.Context, record *{{.modelPackageName}}.{{.StructName}}) (result *{{.modelPackageName}}.{{.StructName}}, RowsAffected int64, err error) {
-	if DB.DriverName() == "postgres" {
-		return add{{.StructName}}Postgres( ctx, record)
-	} else {
-		return add{{.StructName}}( ctx, record)
-	}
+    if DB.DriverName() == "postgres" {
+        return add{{.StructName}}Postgres( ctx, record)
+    } else {
+        return add{{.StructName}}( ctx, record)
+    }
 }
 
 // add{{.StructName}}Postgres is a function to add a single record to {{.TableName}} table in the {{.DatabaseName}} database

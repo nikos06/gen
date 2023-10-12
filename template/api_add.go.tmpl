@@ -12,38 +12,38 @@
 // @Router /entity/{{.TableName | singular | toLower}} [post]
 // @Security ApiKeyAuthorization
 func Add{{.StructName}}(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	ctx := initializeContext(r)
-	{{.StructName | toLower | printf "%s_"}} := &{{.modelPackageName}}.{{.StructName}}{}
+    ctx := initializeContext(r)
+    {{.StructName | toLower | printf "%s_"}} := &{{.modelPackageName}}.{{.StructName}}{}
 
-	if err := readJSON(r, {{.StructName | toLower | printf "%s_"}}); err != nil {
-		returnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
-		return
-	}
+    if err := readJSON(r, {{.StructName | toLower | printf "%s_"}}); err != nil {
+        api_utils.ReturnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
+        return
+    }
 
 
    if err := {{.StructName | toLower | printf "%s_"}}.BeforeSave({{.daoPackageName}}.DB); err != nil {
-      returnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
+      api_utils.ReturnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
    }
 
    {{.StructName | toLower | printf "%s_"}}.Prepare()
 
    if err := {{.StructName | toLower | printf "%s_"}}.Validate({{.modelPackageName}}.Create); err != nil {
-      returnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
+      api_utils.ReturnError(ctx, w, r, {{.daoPackageName}}.ErrBadParams)
       return
    }
 
-	if err := ValidateRequest(ctx, r, "{{.TableName}}", {{.modelPackageName}}.Create); err != nil{
-		returnError(ctx, w, r, err)
-		return
-	}
+    if err := ValidateRequest(ctx, r, "{{.TableName}}", {{.modelPackageName}}.Create); err != nil{
+        api_utils.ReturnError(ctx, w, r, err)
+        return
+    }
 
     var err error
-	{{.StructName | toLower | printf "%s_"}}, _, err = {{.daoPackageName}}.Add{{.StructName}}(ctx, {{.StructName | toLower | printf "%s_"}})
-	if err != nil {
-		returnError(ctx, w, r, err)
-		return
-	}
+    {{.StructName | toLower | printf "%s_"}}, _, err = {{.daoPackageName}}.Add{{.StructName}}(ctx, {{.StructName | toLower | printf "%s_"}})
+    if err != nil {
+        api_utils.ReturnError(ctx, w, r, err)
+        return
+    }
 
-	writeResults(ctx, w, {{.StructName | toLower | printf "%s_"}})
+    writeResults(ctx, w, {{.StructName | toLower | printf "%s_"}})
 }
 {{end}}

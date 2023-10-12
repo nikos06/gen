@@ -4,35 +4,42 @@
 // @Tags {{.StructName}}
 // @Description Get{{.StructName}} is a function to get a single record from the {{.TableName}} table in the {{.DatabaseName}} database
 // @Produce  json
-{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}// @Param  {{ $field.PrimaryKeyArgName }} path {{ $field.SQLMapping.SwaggerType }} true "{{ $field.ColumnMeta.Name }}"{{print "\n"}}{{end}}{{end}} // @Success 200 {object} {{.apiPackageName}}.Results{results={{.modelPackageName}}.{{.StructName}}}
+// @Param  expand  query string false "expand properties, ex: 'business,contact'. special value '_all' expands all properties"
+{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}// @Param  {{ $field.PrimaryKeyArgName }}   path  {{ $field.SQLMapping.SwaggerType }} true  "{{ $field.ColumnMeta.Name }}"{{print "\n"}}{{end}}{{end}} // @Success 200 {object} {{.apiPackageName}}.Results{results={{.modelPackageName}}.{{.StructName}}}
 // @Failure 400 {object} {{.apiPackageName}}.ErrBadParams
 // @Failure 404 {object} {{.apiPackageName}}.ErrNotFound "ErrNotFound, db record for id not found - returns NotFound HTTP 404 not found error"
 // @Failure 500 {object} {{.apiPackageName}}.ErrDefault "Unknown error - returns HTTP 500 internal server error"
 // @Router /entity/{{.TableName | singular | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/{ {{- $field.PrimaryKeyArgName -}} }{{end}}{{end}} [get]
 // @Security ApiKeyAuthorization
 func Get{{.StructName}}(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	ctx := initializeContext(r)
+    ctx := initializeContext(r)
 {{range $field := .TableInfo.CodeFields}}
 {{ if $field.PrimaryKeyArgName }}
 
-	{{$field.PrimaryKeyArgName}}, err := {{$field.PrimaryKeyFieldParser}}(ps, "{{$field.PrimaryKeyArgName}}")
-	if err != nil {
-		returnError(ctx, w, r, err)
-		return
-	}
+    {{$field.PrimaryKeyArgName}}, err := {{$field.PrimaryKeyFieldParser}}(ps, "{{$field.PrimaryKeyArgName}}")
+    if err != nil {
+        api_utils.ReturnError(w, r, http.StatusBadRequest, err)
+        return
+    }
 {{end}}{{end}}
 
-	if err := ValidateRequest(ctx, r, "{{.TableName}}", {{.modelPackageName}}.RetrieveOne); err != nil{
-		returnError(ctx, w, r, err)
-		return
-	}
+    expand, err := readString(r, "expand", "")
+    if err != nil {
+        api_utils.ReturnError(w, r, http.StatusBadRequest, err)
+        return
+    }
 
-	record, err := {{.daoPackageName}}.Get{{.StructName}}(ctx,{{range $field := .TableInfo.CodeFields}} {{ if $field.PrimaryKeyArgName }} {{$field.PrimaryKeyArgName}},{{end}}{{end -}})
-	if err != nil {
-		returnError(ctx, w, r, err)
-		return
-	}
+    if err := ValidateRequest(ctx, r, "{{.TableName}}", {{.modelPackageName}}.RetrieveOne); err != nil{
+        api_utils.ReturnError(w, r, http.StatusBadRequest, err)
+        return
+    }
 
-	writeResults(ctx, w, record)
+    record, err := {{.daoPackageName}}.Get{{.StructName}}(ctx,{{range $field := .TableInfo.CodeFields}} {{ if $field.PrimaryKeyArgName }} {{$field.PrimaryKeyArgName}},{{end}}{{end -}} expand)
+    if err != nil {
+        daoReturnError(w, r, err)
+        return
+    }
+
+    writeResults(ctx, w, record)
 }
 {{end}}

@@ -20,19 +20,19 @@ The code generation, will generate functions for
 
 // GetAllInvoices is a function to get a slice of record(s) from invoices table in the main database
 // params - page     - page requested (defaults to 0)
-// params - pagesize - number of records in a page  (defaults to 20)
+// params - pageSize - number of records in a page  (defaults to 20)
 // params - order    - db sort order column
 // error - ErrNotFound, db Find error
-func GetAllInvoices(ctx context.Context, page, pagesize int64, order string) (results []*model.Invoices, totalRows int, err error) {
+func GetAllInvoices(ctx context.Context, page, pageSize int64, order string) (results []*model.Invoices, totalRows int, err error) {
 
 	resultOrm := DB.Model(&model.Invoices{})
     resultOrm.Count(&totalRows)
 
 	if page > 0 {
-		offset := (page - 1) * pagesize
-		resultOrm = resultOrm.Offset(offset).Limit(pagesize)
+		offset := (page - 1) * pageSize
+		resultOrm = resultOrm.Offset(offset).Limit(pageSize)
 	} else {
-		resultOrm = resultOrm.Limit(pagesize)
+		resultOrm = resultOrm.Limit(pageSize)
     }
 
 	if order != "" {

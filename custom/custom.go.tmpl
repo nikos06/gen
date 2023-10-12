@@ -11,10 +11,10 @@ import (
 
 // GetAll{{.StructName}} is a function to get a slice of record(s) from {{.TableName}} table in the {{.DatabaseName}} database
 // params - page     - page requested (defaults to 0)
-// params - pagesize - number of records in a page  (defaults to 20)
+// params - pageSize - number of records in a page  (defaults to 20)
 // params - order    - db sort order column
 // error - ErrNotFound, db Find error
-func GetAll{{.StructName}}(ctx context.Context, page, pagesize int, order string) ({{.StructName | toLower}} []*{{.modelPackageName}}.{{.StructName}}, totalRows int, err error) {
+func GetAll{{.StructName}}(ctx context.Context, page, pageSize int, order string) ({{.StructName | toLower}} []*{{.modelPackageName}}.{{.StructName}}, totalRows int, err error) {
 
 	{{.StructName | toLower}} = []*{{.modelPackageName}}.{{.StructName}}{}
 
@@ -22,10 +22,10 @@ func GetAll{{.StructName}}(ctx context.Context, page, pagesize int, order string
     {{.StructName | toLower}}Orm.Count(&totalRows)
 
 	if page > 0 {
-		offset := (page - 1) * pagesize
-		{{.StructName | toLower}}Orm = {{.StructName | toLower}}Orm.Offset(offset).Limit(pagesize)
+		offset := (page - 1) * pageSize
+		{{.StructName | toLower}}Orm = {{.StructName | toLower}}Orm.Offset(offset).Limit(pageSize)
 	} else {
-		{{.StructName | toLower}}Orm = {{.StructName | toLower}}Orm.Limit(pagesize)
+		{{.StructName | toLower}}Orm = {{.StructName | toLower}}Orm.Limit(pageSize)
     }
 
 	if order != "" {

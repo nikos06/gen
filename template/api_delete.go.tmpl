@@ -14,27 +14,27 @@
 // @Router /entity/{{.TableName | singular | toLower}}{{range $field := .TableInfo.CodeFields}}{{ if $field.PrimaryKeyArgName}}/{ {{- $field.PrimaryKeyArgName -}} }{{end}}{{end}} [delete]
 // @Security ApiKeyAuthorization
 func Delete{{.StructName}}(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	ctx := initializeContext(r)
+    ctx := initializeContext(r)
 {{range $field := .TableInfo.CodeFields}}
 {{ if $field.PrimaryKeyArgName }}
-	{{$field.PrimaryKeyArgName}}, err := {{$field.PrimaryKeyFieldParser}}(ps, "{{$field.PrimaryKeyArgName}}")
-	if err != nil {
-		returnError(ctx, w, r, err)
-		return
-	}
+    {{$field.PrimaryKeyArgName}}, err := {{$field.PrimaryKeyFieldParser}}(ps, "{{$field.PrimaryKeyArgName}}")
+    if err != nil {
+        api_utils.ReturnError(ctx, w, r, err)
+        return
+    }
 {{end}}{{end}}
 
-	if err := ValidateRequest(ctx, r, "{{.TableName}}", {{.modelPackageName}}.Delete); err != nil{
-		returnError(ctx, w, r, err)
-		return
-	}
+    if err := ValidateRequest(ctx, r, "{{.TableName}}", {{.modelPackageName}}.Delete); err != nil{
+        api_utils.ReturnError(ctx, w, r, err)
+        return
+    }
 
-	rowsAffected, err := {{.daoPackageName}}.Delete{{.StructName}}(ctx,{{range $field := .TableInfo.CodeFields}} {{ if $field.PrimaryKeyArgName }} {{$field.PrimaryKeyArgName}},{{end}}{{end -}})
-	if err != nil {
-	    returnError(ctx, w, r, err)
-	    return
-	}
+    rowsAffected, err := {{.daoPackageName}}.Delete{{.StructName}}(ctx,{{range $field := .TableInfo.CodeFields}} {{ if $field.PrimaryKeyArgName }} {{$field.PrimaryKeyArgName}},{{end}}{{end -}})
+    if err != nil {
+        api_utils.ReturnError(ctx, w, r, err)
+        return
+    }
 
-	writeRowsAffected(ctx, w, rowsAffected )
+    writeRowsAffected(ctx, w, rowsAffected )
 }
 {{end}}

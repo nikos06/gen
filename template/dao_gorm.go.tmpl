@@ -2,12 +2,18 @@ package {{.daoPackageName}}
 
 import (
     "context"
+    "errors"
+    "strings"
     "time"
 
-	"{{.modelFQPN}}"
+    "{{.modelFQPN}}"
 
-    "gopkg.in/guregu/null.v4"
     "github.com/google/uuid"
+    {{ if or (eq .TableName "mailing_lists") (eq .TableName "media") (eq .TableName "services") (eq .TableName "contacts") (eq .TableName "businesses") -}}
+    "github.com/iancoleman/strcase"
+    {{end -}}
+    "gopkg.in/guregu/null.v4"
+    "gorm.io/gorm"
 )
 
 var (
